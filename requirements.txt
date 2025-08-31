@@ -1,3 +1,28 @@
-PyQt5==5.15.7
-requests==2.28.2
-pathlib==1.0.1
+# GUI Framework
+PyQt5>=5.15.0,<6.0.0
+
+# HTTP Library
+requests>=2.25.0,<3.0.0
+
+# Path manipulation (built-in for Python 3.4+, but included for compatibility)
+pathlib2>=2.3.0; python_version<"3.4"
+
+# Additional dependencies for better functionality
+# JSON handling (built-in, but explicit for clarity)
+# uuid (built-in)
+# hashlib (built-in)
+# subprocess (built-in)
+# platform (built-in)
+# datetime (built-in)
+# shutil (built-in)
+# os (built-in)
+# sys (built-in)
+# webbrowser (built-in)
+# random (built-in)
+
+# Development dependencies (optional, uncomment if needed)
+# pytest>=6.0.0
+# pytest-qt>=4.0.0
+# black>=21.0.0
+# flake8>=3.8.0
+# mypy>=0.800

@@ -1,39 +1,52 @@
-# Qoder Reset Tool 🔒🔧
+# Qoder Reset Tool 🔒
 
-## Overview
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![PyQt5](https://img.shields.io/badge/GUI-PyQt5-green.svg)](https://pypi.org/project/PyQt5/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/locfaker/Qoder-Free)
 
-Qoder Reset Tool is a comprehensive privacy management application designed to help users reset and clean Qoder application data with enhanced security features. Built using PyQt5, this cross-platform tool provides users with powerful options to manage their digital identity.
+A comprehensive privacy management application designed to help users reset and clean Qoder application data with enhanced security features. Built with PyQt5, this cross-platform tool provides powerful options to manage digital identity and privacy.
 
-## 🌟 Key Features
+## ✨ Features
 
-- **One-Click Reset**: Quickly reset Qoder application configurations
-- **Multi-Language Support**: 
-  - 🇺🇸 English
-  - 🇻🇳 Vietnamese
-  - 🇨🇳 Chinese
-  - 🇷🇺 Russian
-- **Cross-Platform Compatibility**: 
-  - Windows
-  - macOS
-  - Linux
-- **Advanced Privacy Tools**:
-  - Reset Machine ID
-  - Clear Telemetry Data
-  - Deep Identity Cleanup
-- **Secure Data Management**: 
-  - Remove tracking files
-  - Protect user privacy
-- **User-Friendly Interface**: 
-  - Intuitive design
-  - Easy-to-use controls
+### 🚀 Core Functionality
+- **One-Click Reset**: Quickly reset all Qoder application configurations
+- **Machine ID Reset**: Generate new unique machine identifiers
+- **Telemetry Data Cleanup**: Remove tracking and analytics data
+- **Deep Identity Cleanup**: Comprehensive removal of identity-related files
+- **Hardware Fingerprint Reset**: Advanced anti-detection capabilities
 
-## 🛠 System Requirements
+### 🌍 Multi-Language Support
+- 🇺🇸 **English** - Full support
+- 🇻🇳 **Vietnamese** - Tiếng Việt
+- 🇨🇳 **Chinese** - 中文
+- 🇷🇺 **Russian** - Русский
 
-- Python 3.7+
-- PyQt5
-- requests library
+### 🖥️ Cross-Platform Compatibility
+- **Windows** 10/11 (x64)
+- **macOS** 10.14+ (Intel & Apple Silicon)
+- **Linux** (Ubuntu 18.04+, Debian 10+, CentOS 7+)
 
-## 🚀 Installation
+### 🔐 Privacy & Security
+- **Safe Data Handling**: Preserves essential user data while cleaning identity traces
+- **Selective Cleanup**: Option to preserve chat history
+- **Advanced Fingerprinting**: Hardware-level identity reset
+- **Secure File Operations**: Safe deletion with verification
+
+## 📋 System Requirements
+
+### Minimum Requirements
+- **Python**: 3.7 or higher
+- **RAM**: 512 MB
+- **Storage**: 100 MB free space
+- **OS**: Windows 10, macOS 10.14, or Linux with GUI support
+
+### Dependencies
+- `PyQt5 >= 5.15.0` - GUI framework
+- `requests >= 2.25.0` - HTTP library
+- `pathlib` - Path manipulation (built-in for Python 3.4+)
+
+## 🚀 Quick Start
 
 ### 1. Clone the Repository
 ```bash
@@ -43,60 +56,153 @@ cd Qoder-Free
 
 ### 2. Install Dependencies
 ```bash
+# Using pip
 pip install -r requirements.txt
+
+# Or using conda
+conda install --file requirements.txt
 ```
 
-## 💻 Running the Application
+### 3. Run the Application
 
-### Windows
+#### Windows
 ```bash
+# Double-click or run in terminal
 start_gui.bat
 ```
 
-### macOS/Linux
+#### macOS/Linux
 ```bash
-chmod +x start_gui.sh
-./start_gui.sh
+# Make executable and run
+chmod +x qoder_reset_gui.py
+python qoder_reset_gui.py
 ```
 
-## 🔐 Privacy Features
+## 📖 Usage Guide
 
-- Generate new unique identifiers
-- Remove tracking-related files
-- Multiple reset levels
-- Preserve essential user data
+### Basic Operations
+
+1. **Launch the Application**
+   - Run the appropriate startup script for your platform
+   - Select your preferred language from the dropdown
+
+2. **One-Click Reset** (Recommended)
+   - Click "One-Click Configuration" for automatic reset
+   - Choose whether to preserve chat history
+   - Confirm the operation
+
+3. **Advanced Operations**
+   - **Close Qoder**: Safely terminate Qoder processes
+   - **Reset Machine ID**: Generate new machine identifier
+   - **Reset Telemetry**: Clear tracking data
+   - **Deep Identity Clean**: Comprehensive privacy cleanup
+
+### Safety Features
+
+- **Process Detection**: Automatically detects running Qoder instances
+- **Backup Preservation**: Option to keep important user data
+- **Operation Logging**: Detailed logs of all operations
+- **Rollback Support**: Safe operations with verification
+
+## 🛠️ Development
+
+### Project Structure
+```
+Qoder-Free/
+├── qoder_reset_gui.py      # Main application file
+├── requirements.txt        # Python dependencies
+├── start_gui.bat          # Windows launcher
+├── LICENSE                # MIT License
+├── README.md              # This file
+└── .gitignore            # Git ignore rules
+```
+
+### Building from Source
+
+1. **Clone and Setup**
+   ```bash
+   git clone https://github.com/locfaker/Qoder-Free.git
+   cd Qoder-Free
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+2. **Run in Development Mode**
+   ```bash
+   python qoder_reset_gui.py
+   ```
+
+3. **Create Executable** (Optional)
+   ```bash
+   pip install pyinstaller
+   pyinstaller --onefile --windowed qoder_reset_gui.py
+   ```
 
 ## 🤝 Contributing
 
+We welcome contributions! Please follow these steps:
+
+### Quick Contribution Steps
 1. Fork the repository
-2. Create a feature branch 
-   ```bash
-   git checkout -b feature/YourFeature
-   ```
-3. Commit changes 
-   ```bash
-   git commit -m 'Add some amazing feature'
-   ```
-4. Push to branch 
-   ```bash
-   git push origin feature/YourFeature
-   ```
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## ⚖️ License
+### Development Guidelines
+- Follow PEP 8 style guidelines
+- Add tests for new features
+- Update documentation as needed
+- Ensure cross-platform compatibility
 
-Distributed under the MIT License. See `LICENSE` for more information.
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Issue**: "PyQt5 not found"
+```bash
+# Solution
+pip install --upgrade PyQt5
+```
+
+**Issue**: "Permission denied"
+```bash
+# On macOS/Linux
+chmod +x qoder_reset_gui.py
+sudo python qoder_reset_gui.py
+```
+
+**Issue**: "Qoder not detected"
+- Ensure Qoder is properly installed
+- Check if Qoder is running in the background
+- Verify application data directory exists
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🚨 Disclaimer
 
-This tool is designed for privacy enhancement. Use responsibly and in compliance with all applicable terms of service.
+This tool is designed for privacy enhancement and educational purposes. Users are responsible for:
+- Complying with all applicable terms of service
+- Using the tool responsibly and ethically
+- Understanding the implications of data reset operations
 
-## 📧 Contact
+**Use at your own risk. Always backup important data before using this tool.**
 
-Project Maintainer: [Your Name/Email]
+## 📧 Support
 
-Project Link: [https://github.com/locfaker/Qoder-Free](https://github.com/locfaker/Qoder-Free)
+- **Issues**: [GitHub Issues](https://github.com/locfaker/Qoder-Free/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/locfaker/Qoder-Free/discussions)
+- **Email**: Contact the maintainer through GitHub
+
+## 🌟 Acknowledgments
+
+- Built with [PyQt5](https://pypi.org/project/PyQt5/)
+- Inspired by privacy-focused development practices
+- Thanks to all contributors and users
 
 ---
 
-**Privacy Matters** 🛡️
+**Privacy Matters** 🛡️ | **Made with ❤️ for the community**
