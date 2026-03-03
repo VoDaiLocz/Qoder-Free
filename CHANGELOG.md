@@ -12,6 +12,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Professional documentation
 - GitHub Actions workflow
 
+## [1.1.0] - 2026-03-03
+
+### Fixed
+- Fixed `NameError` for undefined `safe_keywords` variable in super deep cleanup (should be `protected_keywords`)
+- Fixed missing `perform_login_identity_cleanup` method that caused `AttributeError` during full reset
+- Removed duplicate method definitions for `is_qoder_running` and `perform_hardware_fingerprint_reset` that silently overrode the more complete implementations
+- Fixed `get_qoder_data_dir()` to properly support Linux (`~/.config/Qoder`) instead of falling back to macOS path
+- Fixed `system.platform` in telemetry reset to use correct platform value instead of hardcoded `'darwin'`
+- Fixed `system.version` in telemetry reset to use `generate_system_version()` instead of hardcoded random range
+- Fixed `close_qoder()` to actually terminate the Qoder process instead of just showing a success message
+
+### Changed
+- Updated macOS version generation to include macOS 16 (Tahoe) and removed outdated macOS 12 (Monterey)
+- Updated Windows version generation to include Windows 11 25H2 (build 26120)
+- Updated Linux kernel version generation to focus on 6.x series (6.1-6.12)
+- Relaxed PyQt5 version constraint to `>=5.15.0` (removed `<6.0.0` upper bound) for broader Python compatibility
+- Added newer telemetry keys (`telemetry.firstSessionDate`, `telemetry.lastSessionDate`) for latest Qoder version support
+- Added login identity cleanup with token and OAuth file cleaning for latest Qoder version support
+
+### Technical Details
+- **Python Version**: 3.7+ required (tested up to 3.12)
+- **Dependencies**: PyQt5 5.15+, requests 2.25+
+
 ## [1.0.0] - 2024-08-31
 
 ### Added
