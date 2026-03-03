@@ -658,8 +658,11 @@ class QoderResetGUI(QMainWindow):
         if system == "Windows":
             # Windows: %APPDATA%\Qoder
             return home_dir / "AppData" / "Roaming" / "Qoder"
+        elif system == "Linux":
+            # Linux: ~/.config/Qoder
+            return home_dir / ".config" / "Qoder"
         else:
-            # Default to macOS path as fallback
+            # macOS: ~/Library/Application Support/Qoder
             return home_dir / "Library" / "Application Support" / "Qoder"
     
     def is_qoder_running(self):
@@ -691,8 +694,8 @@ class QoderResetGUI(QMainWindow):
     def generate_system_version(self, system_type):
         """根据系统类型生成合适的系统版本号"""
         if system_type == "Darwin":  # macOS
-            # macOS 版本号格式: 14.x.x (Sonoma), 13.x.x (Ventura), 12.x.x (Monterey)
-            major_versions = [12, 13, 14, 15]  # 支持新版本
+            # macOS 版本号格式: 15.x.x (Sequoia), 14.x.x (Sonoma), 13.x.x (Ventura), 16.x.x (Tahoe)
+            major_versions = [13, 14, 15, 16]
             major = random.choice(major_versions)
             minor = random.randint(0, 6)
             patch = random.randint(0, 9)
@@ -703,20 +706,18 @@ class QoderResetGUI(QMainWindow):
                 "10.0.19045",  # Windows 10 22H2
                 "10.0.22621",  # Windows 11 22H2
                 "10.0.22631",  # Windows 11 23H2
-                "10.0.26100"   # Windows 11 24H2
+                "10.0.26100",  # Windows 11 24H2
+                "10.0.26120"   # Windows 11 25H2
             ]
             base_version = random.choice(versions)
             # 添加随机的小版本号
             build_suffix = random.randint(1, 999)
             return f"{base_version}.{build_suffix}"
         else:  # Linux 或其他系统
-            # Linux 内核版本号格式: 5.x.x, 6.x.x
-            major_versions = [5, 6]
+            # Linux 内核版本号格式: 6.x.x
+            major_versions = [6]
             major = random.choice(major_versions)
-            if major == 5:
-                minor = random.randint(10, 19)  # 5.10-5.19
-            else:  # major == 6
-                minor = random.randint(0, 8)    # 6.0-6.8
+            minor = random.randint(1, 12)   # 6.1-6.12
             patch = random.randint(0, 50)
             return f"{major}.{minor}.{patch}"
 
@@ -739,6 +740,19 @@ class QoderResetGUI(QMainWindow):
             if reply == QMessageBox.Yes:
                 # Execute Qoder closing operation
                 self.log("Closing Qoder...")
+                
+                system = platform.system()
+                if system == "Windows":
+                    subprocess.run(["taskkill", "/F", "/IM", "qoder.exe"], 
+                                   capture_output=True, text=True)
+                elif system == "Darwin":  # macOS
+                    subprocess.run(["pkill", "-f", "Qoder"], 
+                                   capture_output=True, text=True)
+                elif system == "Linux":
+                    subprocess.run(["pkill", "-f", "qoder"], 
+                                   capture_output=True, text=True)
+                
+                self.log("Qoder close command sent.")
                 
                 # Prompt successful closure
                 QMessageBox.information(
@@ -1060,6 +1074,8 @@ class QoderResetGUI(QMainWindow):
             data['telemetry.clientId'] = str(uuid.uuid4())
             data['telemetry.userId'] = str(uuid.uuid4())
             data['telemetry.anonymousId'] = str(uuid.uuid4())
+            data['telemetry.firstSessionDate'] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            data['telemetry.lastSessionDate'] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.000Z")
             data['machineId'] = machine_id_hash  # 备用机器ID
             data['deviceId'] = device_id  # 备用设备ID
             data['installationId'] = str(uuid.uuid4())  # 安装ID
@@ -1067,9 +1083,15 @@ class QoderResetGUI(QMainWindow):
             data['platformId'] = str(uuid.uuid4())  # 平台ID
             
             # 重置系统指纹相关配置
-            data['system.platform'] = 'darwin'  # 保持平台一致但重置其他
+            system_type = platform.system()
+            if system_type == "Darwin":
+                data['system.platform'] = 'darwin'
+            elif system_type == "Windows":
+                data['system.platform'] = 'win32'
+            else:
+                data['system.platform'] = 'linux'
             data['system.arch'] = platform.machine()  # 重置架构信息
-            data['system.version'] = f"{random.randint(10, 15)}.{random.randint(0, 9)}.{random.randint(0, 9)}"
+            data['system.version'] = self.generate_system_version(system_type)
             
             self.log(f"   新会话ID: {data['telemetry.sessionId'][:16]}...")
             self.log(f"   新安装ID: {data['telemetry.installationId'][:16]}...")
@@ -1229,6 +1251,58 @@ class QoderResetGUI(QMainWindow):
         else:
             self.log("9. 清除对话记录...")
             self.clear_chat_history(qoder_support_dir)
+
+    def perform_login_identity_cleanup(self, qoder_support_dir):
+        """清理登录身份信息"""
+        try:
+            cleaned_count = 0
+            
+            # Clean login-related files
+            login_files = [
+                "Cookies", "Cookies-journal",
+                "Login Data", "Login Data-journal",
+                "Network Persistent State",
+                "Web Data", "Web Data-journal",
+                "Token Service", "Token Service-journal",
+                "OAuth2 Tokens", "OAuth2 Tokens-journal",
+                "Session Cookies", "Session Cookies-journal",
+            ]
+            
+            for login_file in login_files:
+                file_path = qoder_support_dir / login_file
+                if file_path.exists():
+                    try:
+                        file_path.unlink()
+                        self.log(f"   已清除: {login_file}")
+                        cleaned_count += 1
+                    except Exception as e:
+                        self.log(f"   清除失败 {login_file}: {e}")
+            
+            # Clean auth-related keys from storage.json
+            storage_json_file = qoder_support_dir / "User/globalStorage/storage.json"
+            if storage_json_file.exists():
+                try:
+                    with open(storage_json_file, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    
+                    auth_keys = [key for key in data.keys() if
+                                any(keyword in key.lower() for keyword in 
+                                    ['auth', 'login', 'token', 'credential', 'oauth'])]
+                    
+                    for key in auth_keys:
+                        del data[key]
+                        self.log(f"   已清除配置: {key}")
+                        cleaned_count += 1
+                    
+                    with open(storage_json_file, 'w', encoding='utf-8') as f:
+                        json.dump(data, f, indent=4, ensure_ascii=False)
+                except Exception as e:
+                    self.log(f"   清除存储配置失败: {e}")
+            
+            self.log(f"   登录身份清理完成，处理了 {cleaned_count} 个项目")
+            
+        except Exception as e:
+            self.log(f"   登录身份清理失败: {e}")
 
     def perform_advanced_identity_cleanup(self, qoder_support_dir, preserve_chat=False):
         """执行高级身份清理，清除所有可能的身份识别信息"""
@@ -1675,7 +1749,7 @@ class QoderResetGUI(QMainWindow):
                     
                     if file_ext in suspicious_extensions:
                         # 安全检查：跳过重要文件
-                        is_safe_file = any(safe_word in file.lower() for safe_word in safe_keywords)
+                        is_safe_file = any(safe_word in file.lower() for safe_word in protected_keywords)
                         
                         # 🛡️ 多重安全检查
                         is_protected = any(keyword in file.lower() for keyword in protected_keywords)
@@ -1831,73 +1905,6 @@ class QoderResetGUI(QMainWindow):
         except Exception as e:
             self.log(f"   超级深度清理失败: {e}")
 
-    def is_qoder_running(self):
-        """Kiểm tra xem Qoder có đang chạy không"""
-        try:
-            # Thực hiện kiểm tra qua các phương pháp khác nhau
-            # Ví dụ: Sử dụng subprocess để kiểm tra các tiến trình
-            import subprocess
-            import platform
-
-            # Lệnh kiểm tra tiến trình khác nhau tùy hệ điều hành
-            if platform.system() == "Windows":
-                result = subprocess.run(["tasklist", "/FI", "IMAGENAME eq qoder.exe"], 
-                                        capture_output=True, text=True)
-                return "qoder.exe" in result.stdout.lower()
-            elif platform.system() == "Darwin":  # macOS
-                result = subprocess.run(["pgrep", "-x", "Qoder"], 
-                                        capture_output=True, text=True)
-                return result.returncode == 0
-            elif platform.system() == "Linux":
-                result = subprocess.run(["pgrep", "-x", "qoder"], 
-                                        capture_output=True, text=True)
-                return result.returncode == 0
-            
-            return False
-        except Exception as e:
-            self.log(f"Error checking Qoder status: {e}")
-            return False
-
-    def perform_hardware_fingerprint_reset(self, qoder_support_dir):
-        """Thực hiện reset dấu vân tay phần cứng"""
-        try:
-            # Kiểm tra thư mục tồn tại
-            if not qoder_support_dir.exists():
-                raise Exception("Không tìm thấy thư mục Qoder")
-            
-            # Sinh UUID mới
-            import uuid
-            import json
-            import hashlib
-            
-            # Tạo các ID mới
-            new_machine_id = str(uuid.uuid4())
-            new_device_id = str(uuid.uuid4())
-            machine_id_hash = hashlib.sha256(new_machine_id.encode()).hexdigest()
-            
-            # Đường dẫn file storage
-            storage_json_file = qoder_support_dir / "User/globalStorage/storage.json"
-            
-            # Đọc và cập nhật file storage
-            if storage_json_file.exists():
-                with open(storage_json_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                
-                # Cập nhật các trường liên quan đến hardware
-                data['telemetry.machineId'] = machine_id_hash
-                data['telemetry.devDeviceId'] = new_device_id
-                data['machineId'] = machine_id_hash
-                
-                with open(storage_json_file, 'w', encoding='utf-8') as f:
-                    json.dump(data, f, indent=4, ensure_ascii=False)
-            
-            # Ghi log
-            self.log(f"Reset hardware fingerprint: New Machine ID {machine_id_hash[:16]}...")
-            self.log(f"New Device ID: {new_device_id}")
-            
-        except Exception as e:
-            self.log(f"Error resetting hardware fingerprint: {e}")
-            raise
 
 def main():
     app = QApplication(sys.argv)
