@@ -4,6 +4,8 @@ Qoder Reset Tool - Modern GUI Version
 Implemented using PyQt5, fully designed according to user prototype
 """
 
+__version__ = "1.0.0"
+
 import os
 import sys
 import json
@@ -432,6 +434,16 @@ class QoderResetGUI(QMainWindow):
             }
             QWidget {
                 background-color: white;
+            }
+        """)
+        
+        # Status bar with version info
+        self.statusBar().showMessage(f"Qoder-Free v{__version__}")
+        self.statusBar().setStyleSheet("""
+            QStatusBar {
+                background-color: #ecf0f1;
+                color: #7f8c8d;
+                font-size: 12px;
             }
         """)
         

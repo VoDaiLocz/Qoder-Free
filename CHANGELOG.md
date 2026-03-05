@@ -7,12 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Initial release preparation
-- Professional documentation
-- GitHub Actions workflow
-
-## [1.0.0] - 2024-08-31
+## [1.0.0] - 2025-03-05
 
 ### Added
 - **Core Features**
@@ -21,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Telemetry data cleanup and privacy protection
   - Deep identity cleanup with comprehensive file removal
   - Hardware fingerprint reset for advanced anti-detection
+
+- **Version Management**
+  - Added `__version__` constant for programmatic version access
+  - Version display in GUI status bar
+  - GitHub Actions release workflow for automated releases on tag push
 
 - **Multi-Language Support**
   - English (en) - Full support
