@@ -4,7 +4,7 @@ Qoder Reset Tool - Modern GUI Version
 Implemented using PyQt5, fully designed according to user prototype
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 import os
 import sys

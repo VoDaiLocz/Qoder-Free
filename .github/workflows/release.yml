@@ -92,7 +92,12 @@ jobs:
           - Multi-language support (English, Vietnamese, Chinese, Russian)
           - Cross-platform compatibility (Windows, macOS, Linux)
           - Modern PyQt5-based GUI with professional styling
-          - Version display in status bar
+          - Version display in GUI status bar
+
+          ### 🔄 Changes in v1.1.0
+          - Upgraded deprecated GitHub Actions for CI/CD reliability
+          - Dropped EOL Python 3.7/3.8 from test matrix (now 3.9, 3.10, 3.11)
+          - Updated release automation with `softprops/action-gh-release` v2
 
           ### 📦 Downloads
           - **Windows**: `qoder-reset-tool-windows.zip`
