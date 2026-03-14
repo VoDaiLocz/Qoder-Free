@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-03-14
+
+### Changed
+- **CI/CD Pipeline**: Upgraded deprecated GitHub Actions (`upload-artifact` v3→v4, `download-artifact` v3→v4, `cache` v3→v4, `setup-python` v4→v5, `codecov-action` v3→v4)
+- **CI/CD Pipeline**: Dropped EOL Python 3.7 and 3.8 from test matrix; now covers 3.9, 3.10, 3.11
+- **Release Workflow**: Updated `softprops/action-gh-release` to v2 for improved release automation
+
+### Added
+- **Version Management**: Automated release workflow triggered on `v*` tag push with cross-platform PyInstaller builds
+- **Version Display**: Application version shown in GUI status bar via `__version__` constant
+
 ## [1.0.0] - 2025-03-05
 
 ### Added
