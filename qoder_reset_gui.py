@@ -16,8 +16,17 @@ import subprocess
 import webbrowser
 import platform
 import random
+import time
 from pathlib import Path
 from datetime import datetime, timedelta
+
+# Small delay so OS process teardown completes before re-checking status.
+PROCESS_TERMINATION_WAIT_SECONDS = 0.8
+QODER_PROCESS_NAME_BY_SYSTEM = {
+    "Windows": "qoder.exe",
+    "Darwin": "Qoder",
+    "Linux": "qoder"
+}
 
 try:
     from PyQt5.QtWidgets import *
@@ -753,16 +762,49 @@ class QoderResetGUI(QMainWindow):
             if reply == QMessageBox.Yes:
                 self.log("Closing Qoder...")
                 system = platform.system()
+                kill_result = None
+                process_name = QODER_PROCESS_NAME_BY_SYSTEM.get(system)
+                if not process_name:
+                    self.log(f"Unsupported platform for automatic close: {system}")
+                    QMessageBox.critical(
+                        self,
+                        self.tr('error'),
+                        "Automatic close is not supported on this platform. Please close Qoder manually."
+                    )
+                    return False
+
                 if system == "Windows":
-                    subprocess.run(
-                        ["taskkill", "/F", "/IM", "qoder.exe"],
+                    kill_result = subprocess.run(
+                        ["taskkill", "/F", "/IM", process_name],
                         capture_output=True,
                         text=True
                     )
-                elif system == "Darwin":
-                    subprocess.run(["pkill", "-x", "Qoder"], capture_output=True, text=True)
-                elif system == "Linux":
-                    subprocess.run(["pkill", "-x", "qoder"], capture_output=True, text=True)
+                elif system in ("Darwin", "Linux"):
+                    kill_result = subprocess.run(
+                        ["pkill", "-x", process_name],
+                        capture_output=True,
+                        text=True
+                    )
+
+                if kill_result is None:
+                    self.log("Failed to execute close command.")
+                    return False
+                
+                if kill_result.returncode != 0:
+                    stderr_output = (kill_result.stderr or "").strip()
+                    stdout_output = (kill_result.stdout or "").strip()
+                    if stderr_output:
+                        self.log(f"Close command stderr: {stderr_output}")
+                    if stdout_output:
+                        self.log(f"Close command stdout: {stdout_output}")
+                    if not stderr_output and not stdout_output:
+                        self.log(f"Close command failed with exit code {kill_result.returncode}")
+                    else:
+                        self.log(f"Close command exit code: {kill_result.returncode}")
+                else:
+                    self.log("Close command executed successfully.")
+                
+                time.sleep(PROCESS_TERMINATION_WAIT_SECONDS)
                 
                 if self.is_qoder_running():
                     self.log("Failed to close Qoder process.")
