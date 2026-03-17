@@ -16,8 +16,17 @@ import subprocess
 import webbrowser
 import platform
 import random
+import time
 from pathlib import Path
 from datetime import datetime, timedelta
+
+# Small delay so OS process teardown completes before re-checking status.
+PROCESS_TERMINATION_WAIT_SECONDS = 0.8
+QODER_PROCESS_NAME_BY_SYSTEM = {
+    "Windows": "qoder.exe",
+    "Darwin": "Qoder",
+    "Linux": "qoder"
+}
 
 try:
     from PyQt5.QtWidgets import *
@@ -732,40 +741,96 @@ class QoderResetGUI(QMainWindow):
             patch = random.randint(0, 50)
             return f"{major}.{minor}.{patch}"
 
-    def close_qoder(self):
+    def close_qoder(self, skip_confirm=False):
         """Close Qoder application"""
         try:
             # Check if Qoder is running
             if not self.is_qoder_running():
                 self.log("Qoder is not running.")
-                return
+                return True
             
             # Confirm closing
-            reply = QMessageBox.question(
-                self, 
-                self.tr('confirm_close_qoder'), 
-                "Are you sure you want to close Qoder?", 
-                QMessageBox.Yes | QMessageBox.No
-            )
+            reply = QMessageBox.Yes
+            if not skip_confirm:
+                reply = QMessageBox.question(
+                    self, 
+                    self.tr('confirm_close_qoder'), 
+                    "Are you sure you want to close Qoder?", 
+                    QMessageBox.Yes | QMessageBox.No
+                )
             
             if reply == QMessageBox.Yes:
-                # Execute Qoder closing operation
                 self.log("Closing Qoder...")
+                system = platform.system()
+                kill_result = None
+                process_name = QODER_PROCESS_NAME_BY_SYSTEM.get(system)
+                if not process_name:
+                    self.log(f"Unsupported platform for automatic close: {system}")
+                    QMessageBox.critical(
+                        self,
+                        self.tr('error'),
+                        "Automatic close is not supported on this platform. Please close Qoder manually."
+                    )
+                    return False
+
+                if system == "Windows":
+                    kill_result = subprocess.run(
+                        ["taskkill", "/F", "/IM", process_name],
+                        capture_output=True,
+                        text=True
+                    )
+                elif system in ("Darwin", "Linux"):
+                    kill_result = subprocess.run(
+                        ["pkill", "-x", process_name],
+                        capture_output=True,
+                        text=True
+                    )
+
+                if kill_result is None:
+                    self.log("Failed to execute close command.")
+                    return False
                 
-                # Prompt successful closure
+                if kill_result.returncode != 0:
+                    stderr_output = (kill_result.stderr or "").strip()
+                    stdout_output = (kill_result.stdout or "").strip()
+                    if stderr_output:
+                        self.log(f"Close command stderr: {stderr_output}")
+                    if stdout_output:
+                        self.log(f"Close command stdout: {stdout_output}")
+                    if not stderr_output and not stdout_output:
+                        self.log(f"Close command failed with exit code {kill_result.returncode}")
+                    else:
+                        self.log(f"Close command exit code: {kill_result.returncode}")
+                else:
+                    self.log("Close command executed successfully.")
+                
+                time.sleep(PROCESS_TERMINATION_WAIT_SECONDS)
+                
+                if self.is_qoder_running():
+                    self.log("Failed to close Qoder process.")
+                    QMessageBox.critical(
+                        self,
+                        self.tr('error'),
+                        "Failed to close Qoder automatically. Please close it manually."
+                    )
+                    return False
+                
                 QMessageBox.information(
                     self, 
                     self.tr('success'), 
                     "Qoder has been closed successfully."
                 )
+                return True
+            
+            return False
         except Exception as e:
-            # Log error
             self.log(f"Error closing Qoder: {str(e)}")
             QMessageBox.critical(
                 self, 
                 self.tr('error'), 
                 f"Failed to close Qoder: {str(e)}"
             )
+            return False
     
     def login_identity_cleanup(self):
         """Clean login-related identity information"""
@@ -970,15 +1035,9 @@ class QoderResetGUI(QMainWindow):
     def one_click_reset(self):
         """一键修改所有配置"""
         try:
-            # 检查Qoder是否在运行
             if self.is_qoder_running():
-                QMessageBox.warning(
-                    self, 
-                    self.tr('warning'), 
-                    self.tr('qoder_detected_running') + "\n" + 
-                    self.tr('please_close_qoder')
-                )
-                return
+                if not self.close_qoder(skip_confirm=True):
+                    return
             
             # 确认操作
             reply = QMessageBox.question(
