@@ -137,7 +137,7 @@ Qoder-Free/
 3. **Create Executable** (Optional)
    ```bash
    pip install pyinstaller
-   pyinstaller --onefile --windowed qoder_reset_gui.py
+   pyinstaller --onefile --windowed --collect-all PyQt5 qoder_reset_gui.py
    ```
 
 ## 🤝 Contributing
@@ -166,6 +166,13 @@ We welcome contributions! Please follow these steps:
 # Solution
 pip install --upgrade PyQt5
 ```
+
+**Issue**: "No Qt platform plugin could be initialized"
+- **Run from source (recommended for debugging):** start with `python qoder_reset_gui.py` (Windows: set `QODER_CONSOLE=1` before running `start_gui.bat`).
+- **Reset broken Qt env vars:** set `QODER_QT_RESET_ENV=1` and retry.
+- **Headless Linux:** set `QODER_QT_QPA_PLATFORM=offscreen`.
+- **Get detailed logs:** set `QT_DEBUG_PLUGINS=1` (Windows: set `QODER_DEBUG=1` before running `start_gui.bat`).
+- **Linux missing system libs:** install `libxkbcommon-x11-0` and the common `libxcb-*` packages (see `.github/workflows/ci.yml` for the exact list used in CI).
 
 **Issue**: "Permission denied"
 ```bash

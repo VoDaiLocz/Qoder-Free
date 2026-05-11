@@ -58,7 +58,19 @@ echo ✅ Starting application...
 echo ==================================================
 
 REM Launch the GUI application
-start "" pythonw qoder_reset_gui.py
+REM Optional: enable console + Qt plugin diagnostics
+REM   set QODER_DEBUG=1
+REM   set QODER_QT_RESET_ENV=1
+if "%QODER_DEBUG%"=="1" (
+    set "QODER_CONSOLE=1"
+    set "QT_DEBUG_PLUGINS=1"
+)
+
+if "%QODER_CONSOLE%"=="1" (
+    start "" python qoder_reset_gui.py
+) else (
+    start "" pythonw qoder_reset_gui.py
+)
 
 REM Post-execution
 echo ==================================================
