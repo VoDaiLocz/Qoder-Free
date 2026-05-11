@@ -18,6 +18,7 @@ import platform
 import random
 from pathlib import Path
 from datetime import datetime, timedelta
+from typing import Callable, Mapping, Optional, Tuple
 
 try:
     from PyQt5.QtWidgets import *
@@ -27,6 +28,143 @@ except ImportError:
     print("Error: PyQt5 is not installed")
     print("Please run: pip install PyQt5")
     sys.exit(1)
+
+
+def resolve_qoder_data_dir(
+    system: Optional[str] = None,
+    env: Optional[Mapping[str, str]] = None,
+    home_dir: Optional[Path] = None,
+) -> Path:
+    system = system or platform.system()
+    env = env or os.environ
+    home_dir = home_dir or Path.home()
+
+    if system == "Windows":
+        # Prefer %APPDATA% when available; home/AppData/Roaming is only a fallback.
+        appdata = env.get("APPDATA")
+        if appdata:
+            return Path(appdata) / "Qoder"
+        return home_dir / "AppData" / "Roaming" / "Qoder"
+
+    if system == "Linux":
+        xdg_config_home = env.get("XDG_CONFIG_HOME")
+        base = Path(xdg_config_home) if xdg_config_home else (home_dir / ".config")
+        return base / "Qoder"
+
+    # macOS (and default fallback)
+    return home_dir / "Library" / "Application Support" / "Qoder"
+
+
+def _qoder_platform_value(system: Optional[str] = None) -> str:
+    system = system or platform.system()
+    if system == "Windows":
+        return "win32"
+    if system == "Linux":
+        return "linux"
+    return "darwin"
+
+
+def kill_qoder_process(
+    system: Optional[str] = None,
+    run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+) -> Tuple[bool, str]:
+    """
+    Best-effort attempt to terminate Qoder.
+    Returns (success, details) where details is stdout/stderr text when available.
+    """
+    system = system or platform.system()
+
+    if system == "Windows":
+        result = run(
+            ["taskkill", "/F", "/T", "/IM", "qoder.exe"],
+            capture_output=True,
+            text=True,
+        )
+    elif system == "Darwin":
+        result = run(["pkill", "-x", "Qoder"], capture_output=True, text=True)
+    elif system == "Linux":
+        result = run(["pkill", "-x", "qoder"], capture_output=True, text=True)
+    else:
+        return False, f"Unsupported platform: {system}"
+
+    details = ""
+    if getattr(result, "stdout", None):
+        details += result.stdout.strip()
+    if getattr(result, "stderr", None):
+        if details:
+            details += "\n"
+        details += result.stderr.strip()
+
+    # On Windows taskkill returns non-zero when the process isn't found; treat that as not fatal.
+    if system == "Windows" and "not found" in details.lower():
+        return True, details
+
+    return result.returncode == 0, details
+
+
+def reset_qoder_machine_id(qoder_support_dir: Path) -> str:
+    if not qoder_support_dir.exists():
+        raise FileNotFoundError(f"Qoder data directory not found: {qoder_support_dir}")
+
+    new_machine_id = str(uuid.uuid4())
+    machine_id_file = qoder_support_dir / "machineid"
+    machine_id_file.write_text(new_machine_id, encoding="utf-8")
+    return new_machine_id
+
+
+def reset_qoder_telemetry(qoder_support_dir: Path, system: Optional[str] = None) -> Mapping[str, str]:
+    if not qoder_support_dir.exists():
+        raise FileNotFoundError(f"Qoder data directory not found: {qoder_support_dir}")
+
+    storage_json_file = qoder_support_dir / "User" / "globalStorage" / "storage.json"
+    storage_json_file.parent.mkdir(parents=True, exist_ok=True)
+
+    if storage_json_file.exists():
+        try:
+            data = json.loads(storage_json_file.read_text(encoding="utf-8"))
+        except Exception:
+            data = {}
+    else:
+        data = {}
+
+    new_uuid = str(uuid.uuid4())
+    machine_id_hash = hashlib.sha256(new_uuid.encode()).hexdigest()
+    device_id = str(uuid.uuid4())
+    sqm_id = str(uuid.uuid4())
+    session_id = str(uuid.uuid4())
+    installation_id = str(uuid.uuid4())
+
+    data["telemetry.machineId"] = machine_id_hash
+    data["telemetry.devDeviceId"] = device_id
+    data["telemetry.sqmId"] = sqm_id
+    data["telemetry.sessionId"] = session_id
+    data["telemetry.installationId"] = installation_id
+
+    # Additional identifiers commonly used as fallbacks.
+    data["telemetry.clientId"] = str(uuid.uuid4())
+    data["telemetry.userId"] = str(uuid.uuid4())
+    data["telemetry.anonymousId"] = str(uuid.uuid4())
+    data["machineId"] = machine_id_hash
+    data["deviceId"] = device_id
+    data["installationId"] = str(uuid.uuid4())
+    data["hardwareId"] = str(uuid.uuid4())
+    data["platformId"] = str(uuid.uuid4())
+
+    data["system.platform"] = _qoder_platform_value(system)
+    data["system.arch"] = platform.machine()
+
+    storage_json_file.write_text(
+        json.dumps(data, indent=4, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    return {
+        "telemetry.machineId": machine_id_hash,
+        "telemetry.devDeviceId": device_id,
+        "telemetry.sqmId": sqm_id,
+        "telemetry.sessionId": session_id,
+        "telemetry.installationId": installation_id,
+    }
 
 def _configure_qt_runtime():
     """
@@ -762,15 +900,7 @@ class QoderResetGUI(QMainWindow):
     
     def get_qoder_data_dir(self):
         """Get Qoder data directory path (cross-platform support)"""
-        home_dir = Path.home()
-        system = platform.system()
-
-        if system == "Windows":
-            # Windows: %APPDATA%\Qoder
-            return home_dir / "AppData" / "Roaming" / "Qoder"
-        else:
-            # Default to macOS path as fallback
-            return home_dir / "Library" / "Application Support" / "Qoder"
+        return resolve_qoder_data_dir()
     
     def is_qoder_running(self):
         """Check if Qoder is currently running"""
@@ -849,12 +979,18 @@ class QoderResetGUI(QMainWindow):
             if reply == QMessageBox.Yes:
                 # Execute Qoder closing operation
                 self.log("Closing Qoder...")
-                
-                # Prompt successful closure
+                ok, details = kill_qoder_process()
+                if ok:
+                    self.log("✅ Qoder process terminated.")
+                else:
+                    self.log("⚠️  Failed to terminate Qoder process.")
+                if details:
+                    self.log(details)
+
                 QMessageBox.information(
-                    self, 
-                    self.tr('success'), 
-                    "Qoder has been closed successfully."
+                    self,
+                    self.tr("success") if ok else self.tr("warning"),
+                    "Qoder has been closed successfully." if ok else "Failed to close Qoder.",
                 )
         except Exception as e:
             # Log error
@@ -929,8 +1065,14 @@ class QoderResetGUI(QMainWindow):
             if reply == QMessageBox.Yes:
                 # Execute telemetry reset operation
                 self.log("Resetting Telemetry data...")
-                
-                # Prompt reset success
+                qoder_support_dir = self.get_qoder_data_dir()
+                updated = reset_qoder_telemetry(qoder_support_dir)
+                self.log(
+                    f"   New Telemetry Machine ID: {updated['telemetry.machineId'][:16]}..."
+                )
+                self.log(f"   New Device ID: {updated['telemetry.devDeviceId']}")
+                self.log(f"   New SQM ID: {updated['telemetry.sqmId']}")
+
                 QMessageBox.information(
                     self, 
                     self.tr('success'), 
@@ -969,8 +1111,10 @@ class QoderResetGUI(QMainWindow):
             if reply == QMessageBox.Yes:
                 # Execute machine ID reset operation
                 self.log("Resetting Machine ID...")
-                
-                # Prompt reset success
+                qoder_support_dir = self.get_qoder_data_dir()
+                new_machine_id = reset_qoder_machine_id(qoder_support_dir)
+                self.log(f"   New Machine ID: {new_machine_id}")
+
                 QMessageBox.information(
                     self, 
                     self.tr('success'), 
@@ -1068,15 +1212,30 @@ class QoderResetGUI(QMainWindow):
     def one_click_reset(self):
         """一键修改所有配置"""
         try:
-            # 检查Qoder是否在运行
+            # If Qoder is running, offer to close it automatically so we can patch its data.
             if self.is_qoder_running():
-                QMessageBox.warning(
-                    self, 
-                    self.tr('warning'), 
-                    self.tr('qoder_detected_running') + "\n" + 
-                    self.tr('please_close_qoder')
+                reply = QMessageBox.question(
+                    self,
+                    self.tr("confirm_close_qoder"),
+                    self.tr("qoder_detected_running")
+                    + "\n"
+                    + self.tr("please_close_qoder")
+                    + "\n\nClose Qoder now and continue?",
+                    QMessageBox.Yes | QMessageBox.No,
                 )
-                return
+                if reply != QMessageBox.Yes:
+                    return
+
+                ok, details = kill_qoder_process()
+                if details:
+                    self.log(details)
+                if not ok and self.is_qoder_running():
+                    QMessageBox.warning(
+                        self,
+                        self.tr("warning"),
+                        "Failed to close Qoder. Please close it manually and retry.",
+                    )
+                    return
             
             # 确认操作
             reply = QMessageBox.question(
@@ -1091,15 +1250,7 @@ class QoderResetGUI(QMainWindow):
                 
                 # 执行重置操作
                 self.log("Performing one-click reset...")
-                
-                # 关闭Qoder
-                self.close_qoder()
-                
-                # 重置机器ID
-                self.reset_machine_id()
-                
-                # 重置遥测数据
-                self.reset_telemetry()
+                self.perform_full_reset(preserve_chat=preserve_chat)
                 
                 # 提示操作完成
                 QMessageBox.information(
@@ -1127,13 +1278,8 @@ class QoderResetGUI(QMainWindow):
 
         # 1. 重置机器ID（增强版）
         self.log("1. 重置机器ID...")
-        # 主机器ID文件
-        machine_id_file = qoder_support_dir / "machineid"
-        if machine_id_file.exists() or True:  # 总是创建
-            new_machine_id = str(uuid.uuid4())
-            with open(machine_id_file, 'w') as f:
-                f.write(new_machine_id)
-            self.log("   主机器ID已重置")
+        reset_qoder_machine_id(qoder_support_dir)
+        self.log("   主机器ID已重置")
         
         # 增强：创建多个可能的机器ID文件
         additional_id_files = [
@@ -1149,66 +1295,56 @@ class QoderResetGUI(QMainWindow):
 
         # 2. 重置遥测数据
         self.log("2. 重置遥测数据...")
+        updated = reset_qoder_telemetry(qoder_support_dir)
         storage_json_file = qoder_support_dir / "User/globalStorage/storage.json"
-        if storage_json_file.exists():
-            with open(storage_json_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+        with open(storage_json_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
 
-            new_uuid = str(uuid.uuid4())
-            machine_id_hash = hashlib.sha256(new_uuid.encode()).hexdigest()
-            device_id = str(uuid.uuid4())
-            sqm_id = str(uuid.uuid4())  # 新增：软件质量度量ID
+        # Ensure system fingerprint fields are consistent with the current platform.
+        data["system.platform"] = _qoder_platform_value()
+        data["system.arch"] = platform.machine()
+        data["system.version"] = self.generate_system_version(platform.system())
 
-            # 重置所有遥测相关的标识符（增强版）
-            data['telemetry.machineId'] = machine_id_hash
-            data['telemetry.devDeviceId'] = device_id
-            data['telemetry.sqmId'] = sqm_id
-            
-            # 新增：重置更多可能的硬件指纹标识符
-            data['telemetry.sessionId'] = str(uuid.uuid4())
-            data['telemetry.installationId'] = str(uuid.uuid4())
-            data['telemetry.clientId'] = str(uuid.uuid4())
-            data['telemetry.userId'] = str(uuid.uuid4())
-            data['telemetry.anonymousId'] = str(uuid.uuid4())
-            data['machineId'] = machine_id_hash  # 备用机器ID
-            data['deviceId'] = device_id  # 备用设备ID
-            data['installationId'] = str(uuid.uuid4())  # 安装ID
-            data['hardwareId'] = str(uuid.uuid4())  # 硬件ID
-            data['platformId'] = str(uuid.uuid4())  # 平台ID
-            
-            # 重置系统指纹相关配置
-            data['system.platform'] = 'darwin'  # 保持平台一致但重置其他
-            data['system.arch'] = platform.machine()  # 重置架构信息
-            data['system.version'] = f"{random.randint(10, 15)}.{random.randint(0, 9)}.{random.randint(0, 9)}"
-            
-            self.log(f"   新会话ID: {data['telemetry.sessionId'][:16]}...")
-            self.log(f"   新安装ID: {data['telemetry.installationId'][:16]}...")
-            self.log(f"   新硬件ID: {data['hardwareId'][:16]}...")
-            
-            # 清除其他可能的身份识别配置（保留对话时不清除）
-            if not preserve_chat:
-                # 完全重置模式：清除所有可能的身份相关配置
-                identity_keys_to_remove = []
-                for key in data.keys():
-                    if any(keyword in key.lower() for keyword in [
-                        'auth', 'login', 'session', 'token', 'credential',
-                        'device', 'fingerprint', 'tracking', 'analytics'
-                    ]):
-                        identity_keys_to_remove.append(key)
-                
-                for key in identity_keys_to_remove:
-                    del data[key]
-                    self.log(f"   已清除配置: {key}")
-            else:
-                # 保留对话模式：只清除明确的身份识别配置
-                self.log("   保留对话模式：保留非身份相关配置")
+        # Optional identity cleanup: avoid deleting telemetry keys we just wrote.
+        if not preserve_chat:
+            identity_keywords = (
+                "auth",
+                "login",
+                "token",
+                "credential",
+                "fingerprint",
+                "tracking",
+                "analytics",
+            )
+            protected_prefixes = ("telemetry.",)
+            protected_keys = {
+                "machineId",
+                "deviceId",
+                "installationId",
+                "hardwareId",
+                "platformId",
+            }
 
-            with open(storage_json_file, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
+            identity_keys_to_remove = []
+            for key in list(data.keys()):
+                key_lower = str(key).lower()
+                if key in protected_keys or key_lower.startswith(protected_prefixes):
+                    continue
+                if any(keyword in key_lower for keyword in identity_keywords):
+                    identity_keys_to_remove.append(key)
 
-            self.log(f"   新遥测机器ID: {machine_id_hash[:16]}...")
-            self.log(f"   新设备ID: {device_id}")
-            self.log(f"   新SQM ID: {sqm_id}")
+            for key in identity_keys_to_remove:
+                data.pop(key, None)
+                self.log(f"   已清除配置: {key}")
+        else:
+            self.log("   保留对话模式：保留非身份相关配置")
+
+        with open(storage_json_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+
+        self.log(f"   新遥测机器ID: {updated['telemetry.machineId'][:16]}...")
+        self.log(f"   新设备ID: {updated['telemetry.devDeviceId']}")
+        self.log(f"   新SQM ID: {updated['telemetry.sqmId']}")
 
         # 3. 清理缓存（增强版）
         self.log("3. 清理缓存数据...")
