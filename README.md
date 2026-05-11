@@ -186,6 +186,11 @@ sudo python qoder_reset_gui.py
 - Check if Qoder is running in the background
 - Verify application data directory exists
 
+**Issue**: "Only the lightweight model works, but other models cannot be used"
+- This usually means login/provider routing settings were cleared. Avoid running **Clean Login Identity** unless you intend to sign in again.
+- In the GUI, keep **Preserve login/model settings (recommended)** enabled when doing deep cleanup.
+- If you already cleaned login identity: restart Qoder and sign in again (or reinstall Qoder if sign-in state can’t be recovered).
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

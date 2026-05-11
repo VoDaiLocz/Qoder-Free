@@ -24,9 +24,25 @@ try:
     from PyQt5.QtCore import *
     from PyQt5.QtGui import *
 except ImportError:
-    print("Error: PyQt5 is not installed")
-    print("Please run: pip install PyQt5")
-    sys.exit(1)
+    # Allow importing this module in headless / test environments where PyQt5
+    # isn't available. The GUI entrypoint will still error clearly when run.
+    PYQT_AVAILABLE = False
+    QMainWindow = object  # type: ignore
+else:
+    PYQT_AVAILABLE = True
+
+
+def _sharedclientcache_files_to_delete(*, preserve_model_settings: bool) -> tuple[str, ...]:
+    """
+    Return SharedClientCache files that are safe to delete.
+
+    `mcp.json` is treated as model/provider routing/config and is preserved by
+    default to avoid breaking non-lightweight models.
+    """
+    files = [".info", ".lock"]
+    if not preserve_model_settings or os.environ.get("QODER_CLEAN_MCP_JSON") == "1":
+        files.append("mcp.json")
+    return tuple(files)
 
 def _configure_qt_runtime():
     """
@@ -34,6 +50,9 @@ def _configure_qt_runtime():
 
     Helps avoid: "This application failed to start because no Qt platform plugin could be initialized"
     """
+    if not globals().get("PYQT_AVAILABLE", False):
+        return {"plugins_dir": None, "platforms_dir": None, "frozen": False}
+
     # Some environments carry a broken/mismatched QT_PLUGIN_PATH that breaks plugin discovery.
     # Prefer the PyQt5-bundled plugins path (or PyInstaller bundle) when available.
     env_keys = (
@@ -150,6 +169,7 @@ class QoderResetGUI(QMainWindow):
                 'hardware_fingerprint_reset': '硬件指纹重置',
                 'advanced_options': '高级选项',
                 'preserve_chat': '保留对话记录',
+                'preserve_model_settings': '保留登录/模型设置（推荐）',
                 'operation_log': '操作日志:',
                 'clear_log': '清空日志',
                 'github': 'Github',
@@ -195,6 +215,7 @@ class QoderResetGUI(QMainWindow):
                 'hardware_fingerprint_reset': 'Hardware Fingerprint Reset',
                 'advanced_options': 'Advanced Options',
                 'preserve_chat': 'Preserve Chat History',
+                'preserve_model_settings': 'Preserve login/model settings (recommended)',
                 'operation_log': 'Operation Log:',
                 'clear_log': 'Clear Log',
                 'github': 'Github',
@@ -240,6 +261,7 @@ class QoderResetGUI(QMainWindow):
                 'hardware_fingerprint_reset': 'Сброс железа',
                 'advanced_options': 'Дополнительно',
                 'preserve_chat': 'Сохранить чат',
+                'preserve_model_settings': 'Сохранить вход/настройки моделей (рекомендуется)',
                 'operation_log': 'Журнал операций:',
                 'clear_log': 'Очистить журнал',
                 'github': 'Github',
@@ -285,6 +307,7 @@ class QoderResetGUI(QMainWindow):
                 'hardware_fingerprint_reset': 'Reset de Hardware',
                 'advanced_options': 'Opções Avançadas',
                 'preserve_chat': 'Preservar Histórico do chat',
+                'preserve_model_settings': 'Preservar login/configuração de modelos (recomendado)',
                 'operation_log': 'Log de Operações:',
                 'clear_log': 'Limpar Log',
                 'github': 'Github',
@@ -330,6 +353,7 @@ class QoderResetGUI(QMainWindow):
                 'hardware_fingerprint_reset': 'Đặt Lại Dấu Vân Tay Phần Cứng',
                 'advanced_options': 'Tùy Chọn Nâng Cao',
                 'preserve_chat': 'Giữ Lại Lịch Sử Trò Chuyện',
+                'preserve_model_settings': 'Giữ đăng nhập/cấu hình model (khuyến nghị)',
                 'operation_log': 'Nhật Ký Thao Tác:',
                 'clear_log': 'Xóa Nhật Ký',
                 'github': 'Liên Kết GitHub',
@@ -500,6 +524,20 @@ class QoderResetGUI(QMainWindow):
             }
         """)
         main_layout.addWidget(self.preserve_chat_checkbox)
+
+        # Preserve login/model settings checkbox (prevents breaking non-lightweight models)
+        self.preserve_model_settings_checkbox = QCheckBox(self.tr('preserve_model_settings'))
+        self.preserve_model_settings_checkbox.setChecked(True)
+        self.preserve_model_settings_checkbox.setStyleSheet("""
+            QCheckBox {
+                spacing: 8px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+            }
+        """)
+        main_layout.addWidget(self.preserve_model_settings_checkbox)
         
         # Log Area
         log_layout = QVBoxLayout()
@@ -616,6 +654,7 @@ class QoderResetGUI(QMainWindow):
             
             # Update checkbox
             self.preserve_chat_checkbox.setText(self.tr('preserve_chat'))
+            self.preserve_model_settings_checkbox.setText(self.tr('preserve_model_settings'))
             
             # Optional: log the language change
             self.log(f"Language changed to: {language_text}")
@@ -655,6 +694,7 @@ class QoderResetGUI(QMainWindow):
         
         # 更新复选框文本
         self.preserve_chat_checkbox.setText(self.tr('preserve_chat'))
+        self.preserve_model_settings_checkbox.setText(self.tr('preserve_model_settings'))
         
         # 清空日志并重新初始化
         self.log_text.clear()
@@ -868,6 +908,15 @@ class QoderResetGUI(QMainWindow):
     def login_identity_cleanup(self):
         """Clean login-related identity information"""
         try:
+            reply = QMessageBox.question(
+                self,
+                self.tr('warning'),
+                "This will log you out and may cause non-lightweight models to stop working until you sign in again.\n\nContinue?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if reply != QMessageBox.Yes:
+                return
+
             # Clean critical login-related files
             qoder_support_dir = self.get_qoder_data_dir()
             
@@ -1007,8 +1056,20 @@ class QoderResetGUI(QMainWindow):
             )
             
             if reply == QMessageBox.Yes:
+                preserve_chat = self.preserve_chat_checkbox.isChecked()
+                preserve_model_settings = self.preserve_model_settings_checkbox.isChecked()
+
                 # Execute deep identity cleanup
                 self.log("Performing deep identity cleanup...")
+                qoder_support_dir = self.get_qoder_data_dir()
+                if not qoder_support_dir.exists():
+                    raise Exception("Qoder application data directory not found")
+
+                self.perform_advanced_identity_cleanup(
+                    qoder_support_dir,
+                    preserve_chat=preserve_chat,
+                    preserve_model_settings=preserve_model_settings,
+                )
                 
                 # Prompt cleanup success
                 QMessageBox.information(
@@ -1118,7 +1179,7 @@ class QoderResetGUI(QMainWindow):
                 f"An error occurred: {str(e)}"
             )
 
-    def perform_full_reset(self, preserve_chat=True):
+    def perform_full_reset(self, preserve_chat=True, preserve_model_settings=True):
         """执行完整重置"""
         qoder_support_dir = self.get_qoder_data_dir()
 
@@ -1190,7 +1251,12 @@ class QoderResetGUI(QMainWindow):
                 # 完全重置模式：清除所有可能的身份相关配置
                 identity_keys_to_remove = []
                 for key in data.keys():
-                    if any(keyword in key.lower() for keyword in [
+                    lowered = key.lower()
+                    if preserve_model_settings and any(keyword in lowered for keyword in [
+                        'auth', 'login', 'session', 'token', 'credential'
+                    ]):
+                        continue
+                    if any(keyword in lowered for keyword in [
                         'auth', 'login', 'session', 'token', 'credential',
                         'device', 'fingerprint', 'tracking', 'analytics'
                     ]):
@@ -1213,7 +1279,7 @@ class QoderResetGUI(QMainWindow):
         # 3. 清理缓存（增强版）
         self.log("3. 清理缓存数据...")
         cache_dirs = [
-            "Cache", "blob_storage", "Code Cache", "SharedClientCache",
+            "Cache", "blob_storage", "Code Cache",
             "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache",
             # 新增：更多可能包含指纹的缓存
             "ShaderCache", "DawnCache", "Dictionaries",
@@ -1229,6 +1295,17 @@ class QoderResetGUI(QMainWindow):
                     shutil.rmtree(cache_path)
                     cleaned += 1
                 except:
+                    pass
+
+        # SharedClientCache can contain model/provider routing config (e.g. mcp.json).
+        # Preserve by default to avoid breaking access to other models.
+        if not preserve_model_settings:
+            shared_client_cache = qoder_support_dir / "SharedClientCache"
+            if shared_client_cache.exists():
+                try:
+                    shutil.rmtree(shared_client_cache)
+                    cleaned += 1
+                except Exception:
                     pass
 
         self.log(f"   已清理 {cleaned} 个缓存目录")
@@ -1318,11 +1395,18 @@ class QoderResetGUI(QMainWindow):
         
         # 5. 执行高级身份清理（新增）
         self.log("5. 执行高级身份清理...")
-        self.perform_advanced_identity_cleanup(qoder_support_dir, preserve_chat)
+        self.perform_advanced_identity_cleanup(
+            qoder_support_dir,
+            preserve_chat=preserve_chat,
+            preserve_model_settings=preserve_model_settings,
+        )
 
         # 6. 执行登录身份清理（新增 - 清理登录状态）
-        self.log("6. 执行登录身份清理...")
-        self.perform_login_identity_cleanup(qoder_support_dir)
+        if not preserve_model_settings:
+            self.log("6. 执行登录身份清理...")
+            self.perform_login_identity_cleanup(qoder_support_dir)
+        else:
+            self.log("6. 跳过登录身份清理（保留登录/模型设置）")
 
         # 7. 执行硬件指纹重置（新增 - 最强反检测）
         self.log("7. 执行硬件指纹重置...")
@@ -1340,7 +1424,12 @@ class QoderResetGUI(QMainWindow):
             self.log("9. 清除对话记录...")
             self.clear_chat_history(qoder_support_dir)
 
-    def perform_advanced_identity_cleanup(self, qoder_support_dir, preserve_chat=False):
+    def perform_advanced_identity_cleanup(
+        self,
+        qoder_support_dir,
+        preserve_chat=False,
+        preserve_model_settings=True,
+    ):
         """执行高级身份清理，清除所有可能的身份识别信息"""
         try:
             self.log("开始高级身份清理...")
@@ -1350,8 +1439,9 @@ class QoderResetGUI(QMainWindow):
             shared_cache = qoder_support_dir / "SharedClientCache"
             if shared_cache.exists():
                 # 总是清理这些关键的身份文件（会重新生成）
-                critical_files = [".info", ".lock", "mcp.json"]
-                for file_name in critical_files:
+                for file_name in _sharedclientcache_files_to_delete(
+                    preserve_model_settings=preserve_model_settings
+                ):
                     file_path = shared_cache / file_name
                     if file_path.exists():
                         try:
@@ -2010,6 +2100,11 @@ class QoderResetGUI(QMainWindow):
             raise
 
 def main():
+    if not globals().get("PYQT_AVAILABLE", False):
+        print("Error: PyQt5 is not installed")
+        print("Please run: pip install -r requirements.txt")
+        raise SystemExit(1)
+
     _configure_qt_runtime()
     app = QApplication(sys.argv)
 
