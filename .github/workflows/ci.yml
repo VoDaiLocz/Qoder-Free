@@ -138,19 +138,19 @@ jobs:
     - name: Build executable (Windows)
       if: runner.os == 'Windows'
       run: |
-        pyinstaller --onefile --windowed --name "QoderResetTool" qoder_reset_gui.py
+        pyinstaller --onefile --windowed --collect-all PyQt5 --name "QoderResetTool" qoder_reset_gui.py
 
     - name: Build executable (macOS)
       if: runner.os == 'macOS'
       run: |
-        pyinstaller --onefile --windowed --name "QoderResetTool" qoder_reset_gui.py
+        pyinstaller --onefile --windowed --collect-all PyQt5 --name "QoderResetTool" qoder_reset_gui.py
 
     - name: Build executable (Linux)
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
         sudo apt-get install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0
-        pyinstaller --onefile --windowed --name "QoderResetTool" qoder_reset_gui.py
+        pyinstaller --onefile --windowed --collect-all PyQt5 --name "QoderResetTool" qoder_reset_gui.py
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4

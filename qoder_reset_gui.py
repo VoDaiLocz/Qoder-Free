@@ -28,6 +28,104 @@ except ImportError:
     print("Please run: pip install PyQt5")
     sys.exit(1)
 
+def _configure_qt_runtime():
+    """
+    Best-effort Qt plugin path hardening.
+
+    Helps avoid: "This application failed to start because no Qt platform plugin could be initialized"
+    """
+    # Some environments carry a broken/mismatched QT_PLUGIN_PATH that breaks plugin discovery.
+    # Prefer the PyQt5-bundled plugins path (or PyInstaller bundle) when available.
+    env_keys = (
+        "QT_PLUGIN_PATH",
+        "QT_QPA_PLATFORM_PLUGIN_PATH",
+    )
+
+    def _set_if_missing(key, value):
+        if value and not os.environ.get(key):
+            os.environ[key] = value
+
+    def _first_existing_dir(candidates):
+        for candidate in candidates:
+            try:
+                if candidate and Path(candidate).is_dir():
+                    return str(Path(candidate))
+            except Exception:
+                continue
+        return None
+
+    def _platforms_dir(plugins_dir):
+        if not plugins_dir:
+            return None
+        platforms = Path(plugins_dir) / "platforms"
+        return str(platforms) if platforms.is_dir() else None
+
+    try:
+        # PyInstaller onefile/onedir support
+        if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+            base = Path(getattr(sys, "_MEIPASS"))
+            plugin_candidates = [
+                base / "PyQt5" / "Qt5" / "plugins",
+                base / "PyQt5" / "Qt" / "plugins",
+                base / "Qt5" / "plugins",
+                base / "Qt" / "plugins",
+                base / "plugins",
+            ]
+            plugins_dir = _first_existing_dir(plugin_candidates)
+        else:
+            # Normal (non-frozen) Python install
+            plugins_dir = None
+            try:
+                plugins_dir = QLibraryInfo.location(QLibraryInfo.PluginsPath)
+            except Exception:
+                plugins_dir = None
+
+            if not plugins_dir:
+                try:
+                    import PyQt5  # type: ignore
+
+                    pyqt_root = Path(PyQt5.__file__).resolve().parent
+                    plugins_dir = _first_existing_dir(
+                        [
+                            pyqt_root / "Qt5" / "plugins",
+                            pyqt_root / "Qt" / "plugins",
+                        ]
+                    )
+                except Exception:
+                    plugins_dir = None
+
+        platforms_dir = _platforms_dir(plugins_dir)
+
+        if plugins_dir:
+            try:
+                QCoreApplication.addLibraryPath(str(plugins_dir))
+            except Exception:
+                pass
+
+        if platforms_dir:
+            _set_if_missing("QT_QPA_PLATFORM_PLUGIN_PATH", str(platforms_dir))
+
+        # Allow end-users to override QPA platform when they know they need it
+        # (e.g. headless Linux: offscreen).
+        override_platform = os.environ.get("QODER_QT_QPA_PLATFORM")
+        if override_platform:
+            os.environ["QT_QPA_PLATFORM"] = override_platform
+
+        # Keep existing env unless user explicitly requests reset via QODER_QT_RESET_ENV=1
+        if os.environ.get("QODER_QT_RESET_ENV") == "1":
+            for key in env_keys:
+                os.environ.pop(key, None)
+            if platforms_dir:
+                os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = str(platforms_dir)
+
+        return {
+            "plugins_dir": plugins_dir,
+            "platforms_dir": platforms_dir,
+            "frozen": bool(getattr(sys, "frozen", False)),
+        }
+    except Exception:
+        return {"plugins_dir": None, "platforms_dir": None, "frozen": False}
+
 class QoderResetGUI(QMainWindow):
     def __init__(self):
         """Initialize the main application window"""
@@ -1912,6 +2010,7 @@ class QoderResetGUI(QMainWindow):
             raise
 
 def main():
+    _configure_qt_runtime()
     app = QApplication(sys.argv)
 
     # 设置应用程序样式

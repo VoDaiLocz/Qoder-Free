@@ -164,8 +164,3 @@ dist/
 *.pkg
 *.deb
 *.rpm
-
-# Test files
-test_*.py
-*_test.py
-tests/

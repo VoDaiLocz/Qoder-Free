@@ -40,17 +40,17 @@ jobs:
     - name: Build executable (Windows)
       if: runner.os == 'Windows'
       run: |
-        pyinstaller --onefile --windowed --name "QoderResetTool" qoder_reset_gui.py
+        pyinstaller --onefile --windowed --collect-all PyQt5 --name "QoderResetTool" qoder_reset_gui.py
 
     - name: Build executable (macOS)
       if: runner.os == 'macOS'
       run: |
-        pyinstaller --onefile --windowed --name "QoderResetTool" qoder_reset_gui.py
+        pyinstaller --onefile --windowed --collect-all PyQt5 --name "QoderResetTool" qoder_reset_gui.py
 
     - name: Build executable (Linux)
       if: runner.os == 'Linux'
       run: |
-        pyinstaller --onefile --windowed --name "QoderResetTool" qoder_reset_gui.py
+        pyinstaller --onefile --windowed --collect-all PyQt5 --name "QoderResetTool" qoder_reset_gui.py
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
