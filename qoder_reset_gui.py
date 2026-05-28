@@ -4,7 +4,7 @@ Qoder Reset Tool - Modern GUI Version
 Implemented using PyQt5, fully designed according to user prototype
 """
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 import os
 import sys
@@ -1004,27 +1004,8 @@ class QoderResetGUI(QMainWindow):
     def login_identity_cleanup(self):
         """Clean login-related identity information"""
         try:
-            # Clean critical login-related files
             qoder_support_dir = self.get_qoder_data_dir()
-            
-            # Clean all temporary files
-            temp_files = [
-                "Network Persistent State",
-                "Cookies", 
-                "Login Data", 
-                "Login Data-journal",
-                "Web Data", 
-                "Web Data-journal"
-            ]
-            
-            for temp_file in temp_files:
-                file_path = qoder_support_dir / temp_file
-                if file_path.exists():
-                    try:
-                        file_path.unlink()
-                        self.log(f"Cleaned login file: {temp_file}")
-                    except Exception as e:
-                        self.log(f"Failed to clean login file {temp_file}: {e}")
+            self.perform_login_identity_cleanup(qoder_support_dir)
             
             # Prompt successful cleanup
             QMessageBox.information(
@@ -1040,6 +1021,83 @@ class QoderResetGUI(QMainWindow):
                 self.tr('error'), 
                 f"Failed to clean login identity: {e}"
             )
+
+    def perform_login_identity_cleanup(self, qoder_support_dir):
+        """Clean login/session identity files inside the Qoder data directory."""
+        cleaned_count = 0
+
+        login_files = [
+            "Network Persistent State",
+            "Cookies",
+            "Cookies-journal",
+            "Login Data",
+            "Login Data-journal",
+            "Web Data",
+            "Web Data-journal",
+            "Trust Tokens",
+            "Trust Tokens-journal",
+            "TransportSecurity",
+        ]
+
+        for login_file in login_files:
+            file_path = qoder_support_dir / login_file
+            if file_path.exists():
+                try:
+                    file_path.unlink()
+                    self.log(f"   已清除登录文件: {login_file}")
+                    cleaned_count += 1
+                except Exception as e:
+                    self.log(f"   清除登录文件失败 {login_file}: {e}")
+
+        login_dirs = [
+            "Session Storage",
+            "blob_storage",
+        ]
+
+        for login_dir in login_dirs:
+            dir_path = qoder_support_dir / login_dir
+            if dir_path.exists():
+                try:
+                    shutil.rmtree(dir_path)
+                    self.log(f"   已清除登录目录: {login_dir}")
+                    cleaned_count += 1
+                except Exception as e:
+                    self.log(f"   清除登录目录失败 {login_dir}: {e}")
+
+        storage_json_file = qoder_support_dir / "User" / "globalStorage" / "storage.json"
+        if storage_json_file.exists():
+            try:
+                data = json.loads(storage_json_file.read_text(encoding="utf-8"))
+                login_keywords = (
+                    "accessToken",
+                    "refreshToken",
+                    "auth",
+                    "credential",
+                    "login",
+                    "oauth",
+                    "session",
+                    "token",
+                    "user.account",
+                )
+                removed_keys = [
+                    key
+                    for key in list(data.keys())
+                    if any(keyword.lower() in str(key).lower() for keyword in login_keywords)
+                ]
+                for key in removed_keys:
+                    data.pop(key, None)
+                    self.log(f"   已清除登录配置: {key}")
+
+                if removed_keys:
+                    storage_json_file.write_text(
+                        json.dumps(data, indent=4, ensure_ascii=False),
+                        encoding="utf-8",
+                    )
+                    cleaned_count += len(removed_keys)
+            except Exception as e:
+                self.log(f"   清理登录配置失败: {e}")
+
+        self.log(f"   登录身份清理完成，处理了 {cleaned_count} 个项目")
     
     def reset_telemetry(self):
         """Reset telemetry data"""
@@ -1728,8 +1786,8 @@ class QoderResetGUI(QMainWindow):
         self.log("打开GitHub链接...")
         webbrowser.open("https://github.com/itandelin/qoder-free")
     
-    def perform_hardware_fingerprint_reset(self, qoder_support_dir):
-        """Execute hardware fingerprint reset implementation"""
+    def _write_fake_hardware_info(self, qoder_support_dir):
+        """Create fake hardware information used by hardware fingerprint reset."""
         try:
             # 5. Create fake hardware information (interference detection)
             self.log("5. Creating fake hardware information...")
@@ -1904,6 +1962,15 @@ class QoderResetGUI(QMainWindow):
             ]
             
             # 🚫 绝对安全白名单 - 永远不删除的重要文件
+            safe_keywords = [
+                "settings",
+                "config",
+                "workspace",
+                "preference",
+                "backup",
+                "license",
+                "certificate",
+            ]
             protected_keywords = [
                 "settings", "config", "workspace", "preference", "user",
                 "important", "backup", "license", "key", "certificate", 
@@ -2140,6 +2207,7 @@ class QoderResetGUI(QMainWindow):
             # Ghi log
             self.log(f"Reset hardware fingerprint: New Machine ID {machine_id_hash[:16]}...")
             self.log(f"New Device ID: {new_device_id}")
+            self._write_fake_hardware_info(qoder_support_dir)
             
         except Exception as e:
             self.log(f"Error resetting hardware fingerprint: {e}")
