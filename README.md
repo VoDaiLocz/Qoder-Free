@@ -4,7 +4,7 @@
 [![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/VoDaiLocz/Qoder-Free/releases/tag/v1.2.0)
 [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 [![PyQt5](https://img.shields.io/badge/GUI-PyQt5-green.svg)](https://pypi.org/project/PyQt5/)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/locfaker/Qoder-Free)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/VoDaiLocz/Qoder-Free)
 
 A comprehensive privacy management application designed to help users reset and clean Qoder application data with enhanced security features. Built with PyQt5, this cross-platform tool provides powerful options to manage digital identity and privacy.
 
@@ -47,37 +47,15 @@ A comprehensive privacy management application designed to help users reset and 
 - `requests >= 2.25.0` - HTTP library
 - `pathlib` - Path manipulation (built-in for Python 3.4+)
 
-## 🚀 Quick Start
+## Download
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/locfaker/Qoder-Free.git
-cd Qoder-Free
-```
+Prebuilt packages are available on the latest release page:
 
-### 2. Install Dependencies
-```bash
-# Using pip
-pip install -r requirements.txt
+https://github.com/VoDaiLocz/Qoder-Free/releases/latest
 
-# Or using conda
-conda install --file requirements.txt
-```
-
-### 3. Run the Application
-
-#### Windows
-```bash
-# Double-click or run in terminal
-start_gui.bat
-```
-
-#### macOS/Linux
-```bash
-# Make executable and run
-chmod +x qoder_reset_gui.py
-python qoder_reset_gui.py
-```
+Choose the package for your operating system, extract it, and run the included
+application file. Source installation is only needed for development or
+debugging.
 
 ## 📖 Usage Guide
 
@@ -122,7 +100,7 @@ Qoder-Free/
 
 1. **Clone and Setup**
    ```bash
-   git clone https://github.com/locfaker/Qoder-Free.git
+   git clone https://github.com/VoDaiLocz/Qoder-Free.git
    cd Qoder-Free
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -201,8 +179,8 @@ This tool is designed for privacy enhancement and educational purposes. Users ar
 
 ## 📧 Support
 
-- **Issues**: [GitHub Issues](https://github.com/locfaker/Qoder-Free/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/locfaker/Qoder-Free/discussions)
+- **Issues**: [GitHub Issues](https://github.com/VoDaiLocz/Qoder-Free/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/VoDaiLocz/Qoder-Free/discussions)
 - **Email**: Contact the maintainer through GitHub
 
 ## 🌟 Acknowledgments
