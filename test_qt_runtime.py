@@ -23,11 +23,12 @@ def test_configure_qt_runtime_finds_platform_plugins():
         platforms_dir = info.get("platforms_dir")
         assert platforms_dir, "Expected to discover Qt 'platforms' plugins directory"
         assert Path(platforms_dir).is_dir()
-        assert any(Path(platforms_dir).iterdir()), "Expected platform plugins to be present"
+        assert any(
+            Path(platforms_dir).iterdir()
+        ), "Expected platform plugins to be present"
     finally:
         for k, v in old_env.items():
             if v is None:
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
-

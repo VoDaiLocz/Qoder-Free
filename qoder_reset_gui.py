@@ -112,7 +112,9 @@ def reset_qoder_machine_id(qoder_support_dir: Path) -> str:
     return new_machine_id
 
 
-def reset_qoder_telemetry(qoder_support_dir: Path, system: Optional[str] = None) -> Mapping[str, str]:
+def reset_qoder_telemetry(
+    qoder_support_dir: Path, system: Optional[str] = None
+) -> Mapping[str, str]:
     if not qoder_support_dir.exists():
         raise FileNotFoundError(f"Qoder data directory not found: {qoder_support_dir}")
 
@@ -165,6 +167,7 @@ def reset_qoder_telemetry(qoder_support_dir: Path, system: Optional[str] = None)
         "telemetry.sessionId": session_id,
         "telemetry.installationId": installation_id,
     }
+
 
 def _configure_qt_runtime():
     """
@@ -264,256 +267,247 @@ def _configure_qt_runtime():
     except Exception:
         return {"plugins_dir": None, "platforms_dir": None, "frozen": False}
 
+
 class QoderResetGUI(QMainWindow):
     def __init__(self):
         """Initialize the main application window"""
         super().__init__()
-        self.current_language = 'en'  # Default to English
+        self.current_language = "en"  # Default to English
         self.init_translations()
         self.init_ui()
-    
+
     def init_translations(self):
         """Initialize multilingual dictionary"""
         self.translations = {
-            'zh': {  # Tiếng Trung
-                'window_title': 'Qoder-Free',
-                'intro_text': 'Qoder-Free 主要用于重置 Qoder 应用程序的用户身份信息',
-                'operation_area': '操作区域:',
-                'one_click_config': '一键修改配置',
-                'close_qoder': '关闭 Qoder',
-                'reset_machine_id': '重置机器 ID',
-                'reset_telemetry': '重置遥测数据',
-                'deep_identity_clean': '深度身份清理',
-                'login_identity_clean': '清理登录身份',
-                'hardware_fingerprint_reset': '硬件指纹重置',
-                'advanced_options': '高级选项',
-                'preserve_chat': '保留对话记录',
-                'operation_log': '操作日志:',
-                'clear_log': '清空日志',
-                'github': 'Github',
-                'language': '语言',
-                
+            "zh": {  # Tiếng Trung
+                "window_title": "Qoder-Free",
+                "intro_text": "Qoder-Free 主要用于重置 Qoder 应用程序的用户身份信息",
+                "operation_area": "操作区域:",
+                "one_click_config": "一键修改配置",
+                "close_qoder": "关闭 Qoder",
+                "reset_machine_id": "重置机器 ID",
+                "reset_telemetry": "重置遥测数据",
+                "deep_identity_clean": "深度身份清理",
+                "login_identity_clean": "清理登录身份",
+                "hardware_fingerprint_reset": "硬件指纹重置",
+                "advanced_options": "高级选项",
+                "preserve_chat": "保留对话记录",
+                "operation_log": "操作日志:",
+                "clear_log": "清空日志",
+                "github": "Github",
+                "language": "语言",
                 # 日志消息
-                'tool_started': 'Qoder-Free 重置工具已启动',
-                'log_cleared': '日志已清空',
-                'qoder_running': 'Qoder 正在运行',
-                'qoder_not_running': 'Qoder 未运行',
-                'qoder_directory_exists': 'Qoder 目录存在',
-                'machine_id': '机器 ID',
-                'telemetry_machine_id': '遥测机器 ID',
-                'device_id': '设备 ID',
-                'cache_directories_found': '个缓存目录',
-                'chat_directories_found': '个对话相关目录',
-                'identity_files_found': '个身份识别文件',
-                'status_check_complete': '状态检查完成，可以开始操作',
-                
+                "tool_started": "Qoder-Free 重置工具已启动",
+                "log_cleared": "日志已清空",
+                "qoder_running": "Qoder 正在运行",
+                "qoder_not_running": "Qoder 未运行",
+                "qoder_directory_exists": "Qoder 目录存在",
+                "machine_id": "机器 ID",
+                "telemetry_machine_id": "遥测机器 ID",
+                "device_id": "设备 ID",
+                "cache_directories_found": "个缓存目录",
+                "chat_directories_found": "个对话相关目录",
+                "identity_files_found": "个身份识别文件",
+                "status_check_complete": "状态检查完成，可以开始操作",
                 # 对话框消息
-                'qoder_detected_running': '检测到 Qoder 正在运行',
-                'please_close_qoder': '请手动关闭 Qoder 应用程序',
-                'confirm_one_click': '确认一键修改',
-                'confirm_deep_clean': '确认深度清理',
-                'confirm_login_clean': '确认清理登录身份',
-                'operation_complete': '操作完成',
-                'operation_failed': '操作失败',
-                'error': '错误',
-                'success': '成功',
-                'warning': '警告',
-                'status_check': '状态检查'
+                "qoder_detected_running": "检测到 Qoder 正在运行",
+                "please_close_qoder": "请手动关闭 Qoder 应用程序",
+                "confirm_one_click": "确认一键修改",
+                "confirm_deep_clean": "确认深度清理",
+                "confirm_login_clean": "确认清理登录身份",
+                "operation_complete": "操作完成",
+                "operation_failed": "操作失败",
+                "error": "错误",
+                "success": "成功",
+                "warning": "警告",
+                "status_check": "状态检查",
             },
-            'en': {  # Tiếng Anh
-                'window_title': 'Qoder-Free',
-                'intro_text': 'Qoder-Free is mainly used to reset user identity information of Qoder application',
-                'operation_area': 'Operation Area:',
-                'one_click_config': 'One-Click Configuration',
-                'close_qoder': 'Close Qoder',
-                'reset_machine_id': 'Reset Machine ID',
-                'reset_telemetry': 'Reset Telemetry',
-                'deep_identity_clean': 'Deep Identity Cleanup',
-                'login_identity_clean': 'Clean Login Identity',
-                'hardware_fingerprint_reset': 'Hardware Fingerprint Reset',
-                'advanced_options': 'Advanced Options',
-                'preserve_chat': 'Preserve Chat History',
-                'operation_log': 'Operation Log:',
-                'clear_log': 'Clear Log',
-                'github': 'Github',
-                'language': 'Language',
-                'diagnostic_report': 'Copy Diagnostic Report',
-                'issue_note': 'Note: this tool can reset local Qoder data, but server-side trial credits and model access are controlled by Qoder.',
-                
+            "en": {  # Tiếng Anh
+                "window_title": "Qoder-Free",
+                "intro_text": "Qoder-Free is mainly used to reset user identity information of Qoder application",
+                "operation_area": "Operation Area:",
+                "one_click_config": "One-Click Configuration",
+                "close_qoder": "Close Qoder",
+                "reset_machine_id": "Reset Machine ID",
+                "reset_telemetry": "Reset Telemetry",
+                "deep_identity_clean": "Deep Identity Cleanup",
+                "login_identity_clean": "Clean Login Identity",
+                "hardware_fingerprint_reset": "Hardware Fingerprint Reset",
+                "advanced_options": "Advanced Options",
+                "preserve_chat": "Preserve Chat History",
+                "operation_log": "Operation Log:",
+                "clear_log": "Clear Log",
+                "github": "Github",
+                "language": "Language",
+                "diagnostic_report": "Copy Diagnostic Report",
+                "issue_note": "Note: this tool can reset local Qoder data, but server-side trial credits and model access are controlled by Qoder.",
                 # Log messages
-                'tool_started': 'Qoder-Free reset tool started',
-                'log_cleared': 'Log cleared',
-                'qoder_running': 'Qoder is running',
-                'qoder_not_running': 'Qoder is not running',
-                'qoder_directory_exists': 'Qoder directory exists',
-                'machine_id': 'Machine ID',
-                'telemetry_machine_id': 'Telemetry Machine ID',
-                'device_id': 'Device ID',
-                'cache_directories_found': 'cache directories found',
-                'chat_directories_found': 'chat-related directories found',
-                'identity_files_found': 'identity files found',
-                'status_check_complete': 'Status check completed, ready to operate',
-                
+                "tool_started": "Qoder-Free reset tool started",
+                "log_cleared": "Log cleared",
+                "qoder_running": "Qoder is running",
+                "qoder_not_running": "Qoder is not running",
+                "qoder_directory_exists": "Qoder directory exists",
+                "machine_id": "Machine ID",
+                "telemetry_machine_id": "Telemetry Machine ID",
+                "device_id": "Device ID",
+                "cache_directories_found": "cache directories found",
+                "chat_directories_found": "chat-related directories found",
+                "identity_files_found": "identity files found",
+                "status_check_complete": "Status check completed, ready to operate",
                 # Dialog messages
-                'qoder_detected_running': 'Qoder Detected Running',
-                'please_close_qoder': 'Please close Qoder application manually',
-                'confirm_one_click': 'Confirm One-Click Reset',
-                'confirm_deep_clean': 'Confirm Deep Cleanup',
-                'confirm_login_clean': 'Confirm Login Identity Cleanup',
-                'confirm_close_qoder': 'Confirm Close Qoder',
-                'confirm_reset_machine_id': 'Confirm Machine ID Reset',
-                'confirm_reset_telemetry': 'Confirm Telemetry Reset',
-                'confirm_hardware_fingerprint_reset': 'Confirm Hardware Fingerprint Reset',
-                'operation_complete': 'Operation Complete',
-                'operation_failed': 'Operation Failed',
-                'error': 'Error',
-                'success': 'Success',
-                'warning': 'Warning',
-                'status_check': 'Status Check'
+                "qoder_detected_running": "Qoder Detected Running",
+                "please_close_qoder": "Please close Qoder application manually",
+                "confirm_one_click": "Confirm One-Click Reset",
+                "confirm_deep_clean": "Confirm Deep Cleanup",
+                "confirm_login_clean": "Confirm Login Identity Cleanup",
+                "confirm_close_qoder": "Confirm Close Qoder",
+                "confirm_reset_machine_id": "Confirm Machine ID Reset",
+                "confirm_reset_telemetry": "Confirm Telemetry Reset",
+                "confirm_hardware_fingerprint_reset": "Confirm Hardware Fingerprint Reset",
+                "operation_complete": "Operation Complete",
+                "operation_failed": "Operation Failed",
+                "error": "Error",
+                "success": "Success",
+                "warning": "Warning",
+                "status_check": "Status Check",
             },
-            'ru': {  # Tiếng Nga
-                'window_title': 'Qoder-Free',
-                'intro_text': 'Qoder-Free в основном используется для сброса пользовательской информации приложения Qoder',
-                'operation_area': 'Область операций:',
-                'one_click_config': 'Одним кликом',
-                'close_qoder': 'Закрыть Qoder',
-                'reset_machine_id': 'Сбросить ID машины',
-                'reset_telemetry': 'Сбросить телеметрию',
-                'deep_identity_clean': 'Глубокая очистка',
-                'login_identity_clean': 'Очистить вход',
-                'hardware_fingerprint_reset': 'Сброс железа',
-                'advanced_options': 'Дополнительно',
-                'preserve_chat': 'Сохранить чат',
-                'operation_log': 'Журнал операций:',
-                'clear_log': 'Очистить журнал',
-                'github': 'Github',
-                'language': 'Язык',
-                
+            "ru": {  # Tiếng Nga
+                "window_title": "Qoder-Free",
+                "intro_text": "Qoder-Free в основном используется для сброса пользовательской информации приложения Qoder",
+                "operation_area": "Область операций:",
+                "one_click_config": "Одним кликом",
+                "close_qoder": "Закрыть Qoder",
+                "reset_machine_id": "Сбросить ID машины",
+                "reset_telemetry": "Сбросить телеметрию",
+                "deep_identity_clean": "Глубокая очистка",
+                "login_identity_clean": "Очистить вход",
+                "hardware_fingerprint_reset": "Сброс железа",
+                "advanced_options": "Дополнительно",
+                "preserve_chat": "Сохранить чат",
+                "operation_log": "Журнал операций:",
+                "clear_log": "Очистить журнал",
+                "github": "Github",
+                "language": "Язык",
                 # Сообщения журнала
-                'tool_started': 'Инструмент сброса Qoder-Free запущен',
-                'log_cleared': 'Журнал очищен',
-                'qoder_running': 'Qoder запущен',
-                'qoder_not_running': 'Qoder не запущен',
-                'qoder_directory_exists': 'Папка Qoder существует',
-                'machine_id': 'ID машины',
-                'telemetry_machine_id': 'ID машины телеметрии',
-                'device_id': 'ID устройства',
-                'cache_directories_found': 'папок кеша найдено',
-                'chat_directories_found': 'папок чата найдено',
-                'identity_files_found': 'файлов идентификации найдено',
-                'status_check_complete': 'Проверка статуса завершена, готов к работе',
-                
+                "tool_started": "Инструмент сброса Qoder-Free запущен",
+                "log_cleared": "Журнал очищен",
+                "qoder_running": "Qoder запущен",
+                "qoder_not_running": "Qoder не запущен",
+                "qoder_directory_exists": "Папка Qoder существует",
+                "machine_id": "ID машины",
+                "telemetry_machine_id": "ID машины телеметрии",
+                "device_id": "ID устройства",
+                "cache_directories_found": "папок кеша найдено",
+                "chat_directories_found": "папок чата найдено",
+                "identity_files_found": "файлов идентификации найдено",
+                "status_check_complete": "Проверка статуса завершена, готов к работе",
                 # Диалоговые сообщения
-                'qoder_detected_running': 'Обнаружен запущенный Qoder',
-                'please_close_qoder': 'Пожалуйста, закройте приложение Qoder вручную',
-                'confirm_one_click': 'Подтвердить сброс одним кликом',
-                'confirm_deep_clean': 'Подтвердить глубокую очистку',
-                'confirm_login_clean': 'Подтвердить очистку входа',
-                'operation_complete': 'Операция завершена',
-                'operation_failed': 'Операция не удалась',
-                'error': 'Ошибка',
-                'success': 'Успех',
-                'warning': 'Предупреждение',
-                'status_check': 'Проверка статуса'
+                "qoder_detected_running": "Обнаружен запущенный Qoder",
+                "please_close_qoder": "Пожалуйста, закройте приложение Qoder вручную",
+                "confirm_one_click": "Подтвердить сброс одним кликом",
+                "confirm_deep_clean": "Подтвердить глубокую очистку",
+                "confirm_login_clean": "Подтвердить очистку входа",
+                "operation_complete": "Операция завершена",
+                "operation_failed": "Операция не удалась",
+                "error": "Ошибка",
+                "success": "Успех",
+                "warning": "Предупреждение",
+                "status_check": "Проверка статуса",
             },
-            'pt-br': {  # Tiếng Bồ Đào Nha (Brazil)
-                'window_title': 'Qoder-Free',
-                'intro_text': 'Qoder-Free é principalmente usado para redefinir as informações de identidade do usuário do aplicativo Qoder',
-                'operation_area': 'Área de Operações:',
-                'one_click_config': 'Configuração com um clique',
-                'close_qoder': 'Fechar Qoder',
-                'reset_machine_id': 'Redefinir ID da Máquina',
-                'reset_telemetry': 'Redefinir Telemetria',
-                'deep_identity_clean': 'Limpeza Profunda de Identidade',
-                'login_identity_clean': 'Limpar Login',
-                'hardware_fingerprint_reset': 'Reset de Hardware',
-                'advanced_options': 'Opções Avançadas',
-                'preserve_chat': 'Preservar Histórico do chat',
-                'operation_log': 'Log de Operações:',
-                'clear_log': 'Limpar Log',
-                'github': 'Github',
-                'language': 'Idioma',
-                
+            "pt-br": {  # Tiếng Bồ Đào Nha (Brazil)
+                "window_title": "Qoder-Free",
+                "intro_text": "Qoder-Free é principalmente usado para redefinir as informações de identidade do usuário do aplicativo Qoder",
+                "operation_area": "Área de Operações:",
+                "one_click_config": "Configuração com um clique",
+                "close_qoder": "Fechar Qoder",
+                "reset_machine_id": "Redefinir ID da Máquina",
+                "reset_telemetry": "Redefinir Telemetria",
+                "deep_identity_clean": "Limpeza Profunda de Identidade",
+                "login_identity_clean": "Limpar Login",
+                "hardware_fingerprint_reset": "Reset de Hardware",
+                "advanced_options": "Opções Avançadas",
+                "preserve_chat": "Preservar Histórico do chat",
+                "operation_log": "Log de Operações:",
+                "clear_log": "Limpar Log",
+                "github": "Github",
+                "language": "Idioma",
                 # Mensagens de log
-                'tool_started': 'Ferramenta de redefinição Qoder-Free iniciada',
-                'log_cleared': 'Log limpo',
-                'qoder_running': 'Qoder está em execução',
-                'qoder_not_running': 'Qoder não está em execução',
-                'qoder_directory_exists': 'Diretório Qoder existe',
-                'machine_id': 'ID da Máquina',
-                'telemetry_machine_id': 'ID da Máquina de Telemetria',
-                'device_id': 'ID do Dispositivo',
-                'cache_directories_found': 'diretórios de cache encontrados',
-                'chat_directories_found': 'diretórios relacionados ao chat encontrados',
-                'identity_files_found': 'arquivos de identidade encontrados',
-                'status_check_complete': 'Verificação de status concluída, pronto para operar',
-                
+                "tool_started": "Ferramenta de redefinição Qoder-Free iniciada",
+                "log_cleared": "Log limpo",
+                "qoder_running": "Qoder está em execução",
+                "qoder_not_running": "Qoder não está em execução",
+                "qoder_directory_exists": "Diretório Qoder existe",
+                "machine_id": "ID da Máquina",
+                "telemetry_machine_id": "ID da Máquina de Telemetria",
+                "device_id": "ID do Dispositivo",
+                "cache_directories_found": "diretórios de cache encontrados",
+                "chat_directories_found": "diretórios relacionados ao chat encontrados",
+                "identity_files_found": "arquivos de identidade encontrados",
+                "status_check_complete": "Verificação de status concluída, pronto para operar",
                 # Mensagens de diálogo
-                'qoder_detected_running': 'Qoder Detectado em Execução',
-                'please_close_qoder': 'Por favor, feche o aplicativo Qoder manualmente',
-                'confirm_one_click': 'Confirmar Redefinição com um clique',
-                'confirm_deep_clean': 'Confirmar Limpeza Profunda',
-                'confirm_login_clean': 'Confirmar Limpeza de Identidade de Login',
-                'operation_complete': 'Operação Concluída',
-                'operation_failed': 'Operação Falhou',
-                'error': 'Erro',
-                'success': 'Sucesso',
-                'warning': 'Aviso',
-                'status_check': 'Verificação de Status'
+                "qoder_detected_running": "Qoder Detectado em Execução",
+                "please_close_qoder": "Por favor, feche o aplicativo Qoder manualmente",
+                "confirm_one_click": "Confirmar Redefinição com um clique",
+                "confirm_deep_clean": "Confirmar Limpeza Profunda",
+                "confirm_login_clean": "Confirmar Limpeza de Identidade de Login",
+                "operation_complete": "Operação Concluída",
+                "operation_failed": "Operação Falhou",
+                "error": "Erro",
+                "success": "Sucesso",
+                "warning": "Aviso",
+                "status_check": "Verificação de Status",
             },
-            'vi': {  # Tiếng Việt
-                'window_title': 'Qoder-Free: Công Cụ Làm Sạch',
-                'intro_text': 'Công cụ giúp bạn đặt lại và làm sạch thông tin nhận dạng của ứng dụng Qoder một cách dễ dàng và an toàn.',
-                'operation_area': 'Khu Vực Thao Tác:',
-                'one_click_config': 'Cấu Hình Một Chạm',
-                'close_qoder': 'Đóng Qoder',
-                'reset_machine_id': 'Đặt Lại ID Máy',
-                'reset_telemetry': 'Đặt Lại Dữ Liệu Điện Toán',
-                'deep_identity_clean': 'Làm Sạch Danh Tính Sâu',
-                'login_identity_clean': 'Xóa Thông Tin Đăng Nhập',
-                'hardware_fingerprint_reset': 'Đặt Lại Dấu Vân Tay Phần Cứng',
-                'advanced_options': 'Tùy Chọn Nâng Cao',
-                'preserve_chat': 'Giữ Lại Lịch Sử Trò Chuyện',
-                'operation_log': 'Nhật Ký Thao Tác:',
-                'clear_log': 'Xóa Nhật Ký',
-                'github': 'Liên Kết GitHub',
-                'language': 'Ngôn Ngữ',
-                'diagnostic_report': 'Sao Chép Báo Cáo Chẩn Đoán',
-                'issue_note': 'Lưu ý: công cụ chỉ đặt lại dữ liệu Qoder cục bộ; trial credit và quyền dùng model có thể do máy chủ Qoder quyết định.',
-                
+            "vi": {  # Tiếng Việt
+                "window_title": "Qoder-Free: Công Cụ Làm Sạch",
+                "intro_text": "Công cụ giúp bạn đặt lại và làm sạch thông tin nhận dạng của ứng dụng Qoder một cách dễ dàng và an toàn.",
+                "operation_area": "Khu Vực Thao Tác:",
+                "one_click_config": "Cấu Hình Một Chạm",
+                "close_qoder": "Đóng Qoder",
+                "reset_machine_id": "Đặt Lại ID Máy",
+                "reset_telemetry": "Đặt Lại Dữ Liệu Điện Toán",
+                "deep_identity_clean": "Làm Sạch Danh Tính Sâu",
+                "login_identity_clean": "Xóa Thông Tin Đăng Nhập",
+                "hardware_fingerprint_reset": "Đặt Lại Dấu Vân Tay Phần Cứng",
+                "advanced_options": "Tùy Chọn Nâng Cao",
+                "preserve_chat": "Giữ Lại Lịch Sử Trò Chuyện",
+                "operation_log": "Nhật Ký Thao Tác:",
+                "clear_log": "Xóa Nhật Ký",
+                "github": "Liên Kết GitHub",
+                "language": "Ngôn Ngữ",
+                "diagnostic_report": "Sao Chép Báo Cáo Chẩn Đoán",
+                "issue_note": "Lưu ý: công cụ chỉ đặt lại dữ liệu Qoder cục bộ; trial credit và quyền dùng model có thể do máy chủ Qoder quyết định.",
                 # Các thông báo nhật ký
-                'tool_started': 'Công cụ đặt lại Qoder-Free đã được khởi động',
-                'log_cleared': 'Nhật ký đã được xóa',
-                'qoder_running': 'Qoder đang chạy',
-                'qoder_not_running': 'Qoder không chạy',
-                'qoder_directory_exists': 'Thư mục Qoder tồn tại',
-                'machine_id': 'ID Máy',
-                'telemetry_machine_id': 'ID Máy Điện Toán',
-                'device_id': 'ID Thiết Bị',
-                'cache_directories_found': 'thư mục bộ nhớ đệm được tìm thấy',
-                'chat_directories_found': 'thư mục liên quan đến trò chuyện được tìm thấy',
-                'identity_files_found': 'tệp nhận dạng được tìm thấy',
-                'status_check_complete': 'Kiểm tra trạng thái hoàn tất, sẵn sàng thực hiện',
-                
+                "tool_started": "Công cụ đặt lại Qoder-Free đã được khởi động",
+                "log_cleared": "Nhật ký đã được xóa",
+                "qoder_running": "Qoder đang chạy",
+                "qoder_not_running": "Qoder không chạy",
+                "qoder_directory_exists": "Thư mục Qoder tồn tại",
+                "machine_id": "ID Máy",
+                "telemetry_machine_id": "ID Máy Điện Toán",
+                "device_id": "ID Thiết Bị",
+                "cache_directories_found": "thư mục bộ nhớ đệm được tìm thấy",
+                "chat_directories_found": "thư mục liên quan đến trò chuyện được tìm thấy",
+                "identity_files_found": "tệp nhận dạng được tìm thấy",
+                "status_check_complete": "Kiểm tra trạng thái hoàn tất, sẵn sàng thực hiện",
                 # Các thông báo hộp thoại
-                'qoder_detected_running': 'Phát Hiện Qoder Đang Chạy',
-                'please_close_qoder': 'Vui lòng đóng ứng dụng Qoder theo cách thủ công',
-                'confirm_one_click': 'Xác Nhận Đặt Lại Một Chạm',
-                'confirm_deep_clean': 'Xác Nhận Làm Sạch Sâu',
-                'confirm_login_clean': 'Xác Nhận Xóa Thông Tin Đăng Nhập',
-                'confirm_close_qoder': 'Xác Nhận Đóng Qoder',
-                'confirm_reset_machine_id': 'Xác Nhận Đặt Lại ID Máy',
-                'confirm_reset_telemetry': 'Xác Nhận Đặt Lại Telemetry',
-                'confirm_hardware_fingerprint_reset': 'Xác Nhận Đặt Lại Dấu Vân Tay Phần Cứng',
-                'operation_complete': 'Thao Tác Hoàn Tất',
-                'operation_failed': 'Thao Tác Thất Bại',
-                'error': 'Lỗi',
-                'success': 'Thành Công',
-                'warning': 'Cảnh Báo',
-                'status_check': 'Kiểm Tra Trạng Thái'
-            }
+                "qoder_detected_running": "Phát Hiện Qoder Đang Chạy",
+                "please_close_qoder": "Vui lòng đóng ứng dụng Qoder theo cách thủ công",
+                "confirm_one_click": "Xác Nhận Đặt Lại Một Chạm",
+                "confirm_deep_clean": "Xác Nhận Làm Sạch Sâu",
+                "confirm_login_clean": "Xác Nhận Xóa Thông Tin Đăng Nhập",
+                "confirm_close_qoder": "Xác Nhận Đóng Qoder",
+                "confirm_reset_machine_id": "Xác Nhận Đặt Lại ID Máy",
+                "confirm_reset_telemetry": "Xác Nhận Đặt Lại Telemetry",
+                "confirm_hardware_fingerprint_reset": "Xác Nhận Đặt Lại Dấu Vân Tay Phần Cứng",
+                "operation_complete": "Thao Tác Hoàn Tất",
+                "operation_failed": "Thao Tác Thất Bại",
+                "error": "Lỗi",
+                "success": "Thành Công",
+                "warning": "Cảnh Báo",
+                "status_check": "Kiểm Tra Trạng Thái",
+            },
         }
-    
+
     def tr(self, key):
         """Get translation text for the current language"""
         return (
@@ -521,32 +515,32 @@ class QoderResetGUI(QMainWindow):
             or self.translations.get("en", {}).get(key)
             or key
         )
-    
+
     def init_ui(self):
         """Initialize the user interface"""
         # Set window properties
         self.setWindowTitle(self.tr("window_title"))
         self.setMinimumSize(860, 680)
         self.resize(940, 740)
-        
+
         # Set application-wide font
         font = QFont("Segoe UI", 10)
         QApplication.setFont(font)
-        
+
         # Create main widget and layout
         main_widget = QWidget()
         main_widget.setObjectName("appRoot")
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(24, 22, 24, 18)
         main_layout.setSpacing(14)
-        
+
         # Title Label
-        self.title_label = QLabel(self.tr('window_title'))
+        self.title_label = QLabel(self.tr("window_title"))
         self.title_label.setObjectName("titleLabel")
         main_layout.addWidget(self.title_label)
-        
+
         # Intro Label
-        self.intro_label = QLabel(self.tr('intro_text'))
+        self.intro_label = QLabel(self.tr("intro_text"))
         self.intro_label.setObjectName("introLabel")
         self.intro_label.setWordWrap(True)
         main_layout.addWidget(self.intro_label)
@@ -555,130 +549,112 @@ class QoderResetGUI(QMainWindow):
         self.issue_note_label.setObjectName("issueNoteLabel")
         self.issue_note_label.setWordWrap(True)
         main_layout.addWidget(self.issue_note_label)
-        
+
         # Language Selector
         language_layout = QHBoxLayout()
         language_layout.setSpacing(10)
-        self.language_label = QLabel(self.tr('language'))
+        self.language_label = QLabel(self.tr("language"))
         self.language_selector = QComboBox()
-        self.language_selector.addItems(['English', 'Tiếng Việt', '中文', 'Русский'])
-        self.language_selector.setCurrentText('English')
+        self.language_selector.addItems(["English", "Tiếng Việt", "中文", "Русский"])
+        self.language_selector.setCurrentText("English")
         self.language_selector.currentTextChanged.connect(self.change_language)
-        
+
         language_layout.addWidget(self.language_label)
         language_layout.addWidget(self.language_selector)
         language_layout.addStretch()
         main_layout.addLayout(language_layout)
-        
+
         # Nút một chạm
         self.one_click_btn = self.create_styled_button(
-            self.tr('one_click_config'), 
-            '#1f6feb',
-            self.one_click_reset
+            self.tr("one_click_config"), "#1f6feb", self.one_click_reset
         )
         self.one_click_btn.setMinimumHeight(52)
         main_layout.addWidget(self.one_click_btn)
-        
+
         # Bố cục các nút chức năng
-        self.operation_title = QLabel(self.tr('operation_area'))
+        self.operation_title = QLabel(self.tr("operation_area"))
         self.operation_title.setObjectName("sectionLabel")
         main_layout.addWidget(self.operation_title)
 
         button_layout = QGridLayout()
         button_layout.setSpacing(10)
-        
+
         # Nút đóng Qoder
         self.close_qoder_btn = self.create_styled_button(
-            self.tr('close_qoder'), 
-            '#c2410c',
-            self.close_qoder
+            self.tr("close_qoder"), "#c2410c", self.close_qoder
         )
         button_layout.addWidget(self.close_qoder_btn, 0, 0)
-        
+
         # Nút đặt lại ID máy
         self.reset_machine_id_btn = self.create_styled_button(
-            self.tr('reset_machine_id'), 
-            '#2563eb',
-            self.reset_machine_id
+            self.tr("reset_machine_id"), "#2563eb", self.reset_machine_id
         )
         button_layout.addWidget(self.reset_machine_id_btn, 0, 1)
-        
+
         # Nút đặt lại dữ liệu điện toán
         self.reset_telemetry_btn = self.create_styled_button(
-            self.tr('reset_telemetry'), 
-            '#15803d',
-            self.reset_telemetry
+            self.tr("reset_telemetry"), "#15803d", self.reset_telemetry
         )
         button_layout.addWidget(self.reset_telemetry_btn, 0, 2)
 
         self.login_clean_btn = self.create_styled_button(
-            self.tr('login_identity_clean'),
-            '#475569',
-            self.login_identity_cleanup
+            self.tr("login_identity_clean"), "#475569", self.login_identity_cleanup
         )
         button_layout.addWidget(self.login_clean_btn, 1, 0)
-        
+
         # Nút làm sạch danh tính sâu
         self.deep_clean_btn = self.create_styled_button(
-            self.tr('deep_identity_clean'), 
-            '#a16207',
-            self.deep_identity_cleanup
+            self.tr("deep_identity_clean"), "#a16207", self.deep_identity_cleanup
         )
         button_layout.addWidget(self.deep_clean_btn, 1, 1)
 
         self.hardware_reset_btn = self.create_styled_button(
-            self.tr('hardware_fingerprint_reset'),
-            '#7c3aed',
-            self.hardware_fingerprint_reset
+            self.tr("hardware_fingerprint_reset"),
+            "#7c3aed",
+            self.hardware_fingerprint_reset,
         )
         button_layout.addWidget(self.hardware_reset_btn, 1, 2)
 
         self.diagnostic_btn = self.create_styled_button(
-            self.tr('diagnostic_report'),
-            '#334155',
-            self.copy_diagnostic_report
+            self.tr("diagnostic_report"), "#334155", self.copy_diagnostic_report
         )
         button_layout.addWidget(self.diagnostic_btn, 2, 0)
 
         self.github_btn = self.create_styled_button(
-            self.tr('github'),
-            '#0f766e',
-            self.open_github
+            self.tr("github"), "#0f766e", self.open_github
         )
         button_layout.addWidget(self.github_btn, 2, 1)
 
         self.clear_log_btn = self.create_styled_button(
-            self.tr('clear_log'),
-            '#64748b',
-            self.clear_log
+            self.tr("clear_log"), "#64748b", self.clear_log
         )
         button_layout.addWidget(self.clear_log_btn, 2, 2)
-        
+
         # Thêm bố cục nút vào bố cục chính
         main_layout.addLayout(button_layout)
-        
+
         # Preserve Chat Checkbox
-        self.preserve_chat_checkbox = QCheckBox(self.tr('preserve_chat'))
+        self.preserve_chat_checkbox = QCheckBox(self.tr("preserve_chat"))
         self.preserve_chat_checkbox.setChecked(True)
         main_layout.addWidget(self.preserve_chat_checkbox)
-        
+
         # Log Area
         log_layout = QVBoxLayout()
-        self.log_title = QLabel(self.tr('operation_log'))
+        self.log_title = QLabel(self.tr("operation_log"))
         self.log_title.setObjectName("sectionLabel")
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         self.log_text.setMinimumHeight(190)
-        
+
         log_layout.addWidget(self.log_title)
         log_layout.addWidget(self.log_text)
-        
+
         main_layout.addLayout(log_layout)
-        
+
         # Set main layout
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
-        
+
         # Set overall window style
         self.setStyleSheet("""
             QMainWindow, QWidget#appRoot {
@@ -735,7 +711,7 @@ class QoderResetGUI(QMainWindow):
                 padding: 10px;
             }
         """)
-        
+
         # Status bar with version info
         self.statusBar().showMessage(f"Qoder-Free v{__version__}")
         self.statusBar().setStyleSheet("""
@@ -745,10 +721,10 @@ class QoderResetGUI(QMainWindow):
                 font-size: 12px;
             }
         """)
-        
+
         # Initialize status check
         self.initialize_status_check()
-    
+
     def create_styled_button(self, text, color, connect_func):
         """Tạo nút với phong cách thống nhất"""
         btn = QPushButton(text)
@@ -778,119 +754,119 @@ class QoderResetGUI(QMainWindow):
         """)
         btn.clicked.connect(connect_func)
         return btn
-    
+
     def change_language(self, language_text):
         """Change the application language"""
         try:
             # Normalize language text
             language_text = language_text.strip()
-            
+
             # Map language display text to language codes
             language_map = {
-                'English': 'en',
-                'Tiếng Việt': 'vi', 
-                '中文': 'zh',
-                'Русский': 'ru'
+                "English": "en",
+                "Tiếng Việt": "vi",
+                "中文": "zh",
+                "Русский": "ru",
             }
-            
+
             # Get language code, default to English
-            language = language_map.get(language_text, 'en')
-            
+            language = language_map.get(language_text, "en")
+
             # Update current language
             self.current_language = language
-            
+
             # Update UI elements with translations
-            self.setWindowTitle(self.tr('window_title'))
-            
+            self.setWindowTitle(self.tr("window_title"))
+
             # Update labels
-            self.title_label.setText(self.tr('window_title'))
-            self.intro_label.setText(self.tr('intro_text'))
-            self.issue_note_label.setText(self.tr('issue_note'))
-            self.language_label.setText(self.tr('language'))
-            self.operation_title.setText(self.tr('operation_area'))
-            self.log_title.setText(self.tr('operation_log'))
-            
+            self.title_label.setText(self.tr("window_title"))
+            self.intro_label.setText(self.tr("intro_text"))
+            self.issue_note_label.setText(self.tr("issue_note"))
+            self.language_label.setText(self.tr("language"))
+            self.operation_title.setText(self.tr("operation_area"))
+            self.log_title.setText(self.tr("operation_log"))
+
             # Update buttons with translations
             button_translations = {
-                'one_click_btn': 'one_click_config',
-                'close_qoder_btn': 'close_qoder',
-                'reset_machine_id_btn': 'reset_machine_id',
-                'reset_telemetry_btn': 'reset_telemetry',
-                'login_clean_btn': 'login_identity_clean',
-                'deep_clean_btn': 'deep_identity_clean',
-                'hardware_reset_btn': 'hardware_fingerprint_reset',
-                'diagnostic_btn': 'diagnostic_report',
-                'clear_log_btn': 'clear_log',
-                'github_btn': 'github',
+                "one_click_btn": "one_click_config",
+                "close_qoder_btn": "close_qoder",
+                "reset_machine_id_btn": "reset_machine_id",
+                "reset_telemetry_btn": "reset_telemetry",
+                "login_clean_btn": "login_identity_clean",
+                "deep_clean_btn": "deep_identity_clean",
+                "hardware_reset_btn": "hardware_fingerprint_reset",
+                "diagnostic_btn": "diagnostic_report",
+                "clear_log_btn": "clear_log",
+                "github_btn": "github",
             }
-            
+
             # Update buttons with translated texts
             for btn_name, translation_key in button_translations.items():
                 if hasattr(self, btn_name):
                     getattr(self, btn_name).setText(self.tr(translation_key))
-            
+
             # Update checkbox
-            self.preserve_chat_checkbox.setText(self.tr('preserve_chat'))
-            
+            self.preserve_chat_checkbox.setText(self.tr("preserve_chat"))
+
             # Optional: log the language change
             self.log(f"Language changed to: {language_text}")
-            
+
         except Exception as e:
             # Log any errors during language change
             self.log(f"Error changing language: {e}")
             # Fallback to English
-            self.current_language = 'en'
-            
+            self.current_language = "en"
+
         # Ensure language selector reflects the current selection
         language_index = self.language_selector.findText(language_text)
         if language_index >= 0:
             self.language_selector.setCurrentIndex(language_index)
-    
+
     def update_ui_text(self):
         """更新界面文本"""
         # 更新窗口标题
-        self.setWindowTitle(self.tr('window_title'))
-        
+        self.setWindowTitle(self.tr("window_title"))
+
         # 更新标签文本
-        self.title_label.setText(self.tr('window_title'))
-        self.intro_label.setText(self.tr('intro_text'))
-        self.issue_note_label.setText(self.tr('issue_note'))
-        self.language_label.setText(self.tr('language'))
-        self.operation_title.setText(self.tr('operation_area'))
-        self.log_title.setText(self.tr('operation_log'))
-        
+        self.title_label.setText(self.tr("window_title"))
+        self.intro_label.setText(self.tr("intro_text"))
+        self.issue_note_label.setText(self.tr("issue_note"))
+        self.language_label.setText(self.tr("language"))
+        self.operation_title.setText(self.tr("operation_area"))
+        self.log_title.setText(self.tr("operation_log"))
+
         # 更新按钮文本
-        self.one_click_btn.setText(self.tr('one_click_config'))
-        self.close_qoder_btn.setText(self.tr('close_qoder'))
-        self.reset_machine_id_btn.setText(self.tr('reset_machine_id'))
-        self.reset_telemetry_btn.setText(self.tr('reset_telemetry'))
-        self.deep_clean_btn.setText(self.tr('deep_identity_clean'))
-        self.login_clean_btn.setText(self.tr('login_identity_clean'))
-        self.hardware_reset_btn.setText(self.tr('hardware_fingerprint_reset'))
-        self.diagnostic_btn.setText(self.tr('diagnostic_report'))
-        self.clear_log_btn.setText(self.tr('clear_log'))
-        self.github_btn.setText(self.tr('github'))
-        
+        self.one_click_btn.setText(self.tr("one_click_config"))
+        self.close_qoder_btn.setText(self.tr("close_qoder"))
+        self.reset_machine_id_btn.setText(self.tr("reset_machine_id"))
+        self.reset_telemetry_btn.setText(self.tr("reset_telemetry"))
+        self.deep_clean_btn.setText(self.tr("deep_identity_clean"))
+        self.login_clean_btn.setText(self.tr("login_identity_clean"))
+        self.hardware_reset_btn.setText(self.tr("hardware_fingerprint_reset"))
+        self.diagnostic_btn.setText(self.tr("diagnostic_report"))
+        self.clear_log_btn.setText(self.tr("clear_log"))
+        self.github_btn.setText(self.tr("github"))
+
         # 更新复选框文本
-        self.preserve_chat_checkbox.setText(self.tr('preserve_chat'))
-        
+        self.preserve_chat_checkbox.setText(self.tr("preserve_chat"))
+
         # 清空日志并重新初始化
         self.log_text.clear()
-        self.log(self.tr('tool_started'))
+        self.log(self.tr("tool_started"))
         self.log("=" * 50)
-    
+
     def log(self, message):
         """Log messages with timestamp in English"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_message = f"[{timestamp}] {message}"
         self.log_text.append(log_message)
-    
+
     def initialize_status_check(self):
         """Kiểm tra trạng thái ban đầu của Qoder"""
         try:
             self.log("Qoder-Free reset tool started")
             self.log("=" * 50)
-            
+
             # 1. Kiểm tra trạng thái Qoder
             self.log("1. Checking Qoder process status...")
             is_running = self.is_qoder_running()
@@ -898,7 +874,7 @@ class QoderResetGUI(QMainWindow):
                 self.log("   ❌ Qoder is running")
             else:
                 self.log("   ✅ Qoder is not running")
-            
+
             # 2. Kiểm tra thư mục Qoder
             self.log("2. Checking Qoder directory...")
             qoder_support_dir = self.get_qoder_data_dir()
@@ -906,77 +882,79 @@ class QoderResetGUI(QMainWindow):
                 self.log("   ✅ Qoder directory exists")
             else:
                 self.log("   ❌ Qoder directory not found")
-            
+
             # 3. Kiểm tra file Machine ID
             self.log("3. Checking Machine ID file...")
             machine_id_file = qoder_support_dir / "machineid"
             if machine_id_file.exists():
-                with open(machine_id_file, 'r') as f:
+                with open(machine_id_file, "r") as f:
                     machine_id = f.read().strip()
                 self.log(f"   ✅ Machine ID: {machine_id}")
             else:
                 self.log("   ❌ Machine ID file not found")
-            
+
             # 4. Kiểm tra file Telemetry
             self.log("4. Checking Telemetry data files...")
             storage_json_file = qoder_support_dir / "User/globalStorage/storage.json"
             if storage_json_file.exists():
-                with open(storage_json_file, 'r', encoding='utf-8') as f:
+                with open(storage_json_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                
-                telemetry_machine_id = data.get('telemetry.machineId', 'N/A')
-                device_id = data.get('telemetry.devDeviceId', 'N/A')
-                
+
+                telemetry_machine_id = data.get("telemetry.machineId", "N/A")
+                device_id = data.get("telemetry.devDeviceId", "N/A")
+
                 self.log(f"   ✅ Telemetry Machine ID: {telemetry_machine_id[:16]}...")
                 self.log(f"   ✅ Device ID: {device_id}")
             else:
                 self.log("   ❌ Telemetry data file not found")
-            
+
             # 5. Kiểm tra thư mục cache
             self.log("5. Checking cache directories...")
             cache_dirs = list(qoder_support_dir.glob("**/Cache*"))
             self.log(f"   ✅ Found {len(cache_dirs)}/7 cache directories")
-            
+
             # 6. Kiểm tra thư mục chat
             self.log("6. Checking chat-related directories...")
             chat_dirs = list(qoder_support_dir.glob("**/Chat*"))
             self.log(f"   ✅ Found {len(chat_dirs)}/4 chat-related directories")
-            
+
             # 7. Kiểm tra file nhận dạng
             self.log("7. Checking identity files...")
             identity_files = list(qoder_support_dir.glob("**/identity*"))
             self.log(f"   ✅ Found {len(identity_files)}/6 identity files")
-            
+
             # 8. Kiểm tra SharedClientCache
             self.log("8. Checking SharedClientCache internal files...")
             shared_cache_files = list(qoder_support_dir.glob("**/SharedClientCache*"))
-            self.log(f"   ✅ SharedClientCache internal files: {len(shared_cache_files)}/4")
-            
+            self.log(
+                f"   ✅ SharedClientCache internal files: {len(shared_cache_files)}/4"
+            )
+
             # 9. Kiểm tra Keychain và chứng chỉ
             self.log("9. Checking Keychain and certificate storage...")
             cert_files = list(qoder_support_dir.glob("**/cert*"))
             self.log(f"   ✅ Found {len(cert_files)}/3 certificate/security files")
-            
+
             # 10. Kiểm tra nhật ký hoạt động người dùng
             self.log("10. Checking user activity logs...")
             activity_logs = list(qoder_support_dir.glob("**/activity*"))
             self.log(f"   ✅ Found {len(activity_logs)}/6 activity log files")
-            
+
             # 11. Kiểm tra file dấu vân tay thiết bị
             self.log("11. Checking device fingerprint-related files...")
             fingerprint_files = list(qoder_support_dir.glob("**/fingerprint*"))
             self.log(f"   ✅ Found {len(fingerprint_files)}/7 device fingerprint files")
-            
+
             self.log("=" * 50)
             self.log("Status check completed, ready to operate")
-        
+
         except Exception as e:
             self.log(f"Error during status check: {e}")
-    
+
     def clear_log(self):
         """Clear log contents"""
         self.log_text.clear()
-        self.log(self.tr('log_cleared'))
+        self.log(self.tr("log_cleared"))
 
     def collect_diagnostic_report(self):
         """Collect non-secret state useful for GitHub issue reports."""
@@ -999,16 +977,23 @@ class QoderResetGUI(QMainWindow):
             except Exception as exc:
                 lines.append(f"machineid read error: {exc}")
 
-        storage_json_file = qoder_support_dir / "User" / "globalStorage" / "storage.json"
+        storage_json_file = (
+            qoder_support_dir / "User" / "globalStorage" / "storage.json"
+        )
         lines.append(f"storage.json exists: {storage_json_file.exists()}")
         if storage_json_file.exists():
             try:
                 data = json.loads(storage_json_file.read_text(encoding="utf-8"))
-                telemetry_keys = sorted(key for key in data.keys() if "telemetry" in str(key).lower())
+                telemetry_keys = sorted(
+                    key for key in data.keys() if "telemetry" in str(key).lower()
+                )
                 login_like_keys = sorted(
                     key
                     for key in data.keys()
-                    if any(token in str(key).lower() for token in ("auth", "token", "login", "session"))
+                    if any(
+                        token in str(key).lower()
+                        for token in ("auth", "token", "login", "session")
+                    )
                 )
                 lines.append(f"telemetry key count: {len(telemetry_keys)}")
                 lines.append(f"telemetry keys: {', '.join(telemetry_keys) or 'none'}")
@@ -1041,11 +1026,11 @@ class QoderResetGUI(QMainWindow):
                 self.tr("error"),
                 f"Failed to collect diagnostic report: {e}",
             )
-    
+
     def get_qoder_data_dir(self):
         """Get Qoder data directory path (cross-platform support)"""
         return resolve_qoder_data_dir()
-    
+
     def is_qoder_running(self):
         """Check if Qoder is currently running"""
         try:
@@ -1055,23 +1040,28 @@ class QoderResetGUI(QMainWindow):
 
             # Different process check commands based on operating system
             if platform.system() == "Windows":
-                result = subprocess.run(["tasklist", "/FI", "IMAGENAME eq qoder.exe"], 
-                                        capture_output=True, text=True)
+                result = subprocess.run(
+                    ["tasklist", "/FI", "IMAGENAME eq qoder.exe"],
+                    capture_output=True,
+                    text=True,
+                )
                 return "qoder.exe" in result.stdout.lower()
             elif platform.system() == "Darwin":  # macOS
-                result = subprocess.run(["pgrep", "-x", "Qoder"], 
-                                        capture_output=True, text=True)
+                result = subprocess.run(
+                    ["pgrep", "-x", "Qoder"], capture_output=True, text=True
+                )
                 return result.returncode == 0
             elif platform.system() == "Linux":
-                result = subprocess.run(["pgrep", "-x", "qoder"], 
-                                        capture_output=True, text=True)
+                result = subprocess.run(
+                    ["pgrep", "-x", "qoder"], capture_output=True, text=True
+                )
                 return result.returncode == 0
-            
+
             return False
         except Exception as e:
             self.log(f"Error checking Qoder status: {e}")
             return False
-    
+
     def generate_system_version(self, system_type):
         """根据系统类型生成合适的系统版本号"""
         if system_type == "Darwin":  # macOS
@@ -1087,7 +1077,7 @@ class QoderResetGUI(QMainWindow):
                 "10.0.19045",  # Windows 10 22H2
                 "10.0.22621",  # Windows 11 22H2
                 "10.0.22631",  # Windows 11 23H2
-                "10.0.26100"   # Windows 11 24H2
+                "10.0.26100",  # Windows 11 24H2
             ]
             base_version = random.choice(versions)
             # 添加随机的小版本号
@@ -1100,7 +1090,7 @@ class QoderResetGUI(QMainWindow):
             if major == 5:
                 minor = random.randint(10, 19)  # 5.10-5.19
             else:  # major == 6
-                minor = random.randint(0, 8)    # 6.0-6.8
+                minor = random.randint(0, 8)  # 6.0-6.8
             patch = random.randint(0, 50)
             return f"{major}.{minor}.{patch}"
 
@@ -1111,15 +1101,15 @@ class QoderResetGUI(QMainWindow):
             if not self.is_qoder_running():
                 self.log("Qoder is not running.")
                 return
-            
+
             # Confirm closing
             reply = QMessageBox.question(
-                self, 
-                self.tr('confirm_close_qoder'), 
-                "Are you sure you want to close Qoder?", 
-                QMessageBox.Yes | QMessageBox.No
+                self,
+                self.tr("confirm_close_qoder"),
+                "Are you sure you want to close Qoder?",
+                QMessageBox.Yes | QMessageBox.No,
             )
-            
+
             if reply == QMessageBox.Yes:
                 # Execute Qoder closing operation
                 self.log("Closing Qoder...")
@@ -1134,36 +1124,34 @@ class QoderResetGUI(QMainWindow):
                 QMessageBox.information(
                     self,
                     self.tr("success") if ok else self.tr("warning"),
-                    "Qoder has been closed successfully." if ok else "Failed to close Qoder.",
+                    (
+                        "Qoder has been closed successfully."
+                        if ok
+                        else "Failed to close Qoder."
+                    ),
                 )
         except Exception as e:
             # Log error
             self.log(f"Error closing Qoder: {str(e)}")
             QMessageBox.critical(
-                self, 
-                self.tr('error'), 
-                f"Failed to close Qoder: {str(e)}"
+                self, self.tr("error"), f"Failed to close Qoder: {str(e)}"
             )
-    
+
     def login_identity_cleanup(self):
         """Clean login-related identity information"""
         try:
             qoder_support_dir = self.get_qoder_data_dir()
             self.perform_login_identity_cleanup(qoder_support_dir)
-            
+
             # Prompt successful cleanup
             QMessageBox.information(
-                self, 
-                self.tr('success'), 
-                "Login identity cleaned successfully."
+                self, self.tr("success"), "Login identity cleaned successfully."
             )
         except Exception as e:
             # Log error
             self.log(f"Error during login identity cleanup: {e}")
             QMessageBox.critical(
-                self, 
-                self.tr('error'), 
-                f"Failed to clean login identity: {e}"
+                self, self.tr("error"), f"Failed to clean login identity: {e}"
             )
 
     def perform_login_identity_cleanup(self, qoder_support_dir):
@@ -1208,7 +1196,9 @@ class QoderResetGUI(QMainWindow):
                 except Exception as e:
                     self.log(f"   清除登录目录失败 {login_dir}: {e}")
 
-        storage_json_file = qoder_support_dir / "User" / "globalStorage" / "storage.json"
+        storage_json_file = (
+            qoder_support_dir / "User" / "globalStorage" / "storage.json"
+        )
         if storage_json_file.exists():
             try:
                 data = json.loads(storage_json_file.read_text(encoding="utf-8"))
@@ -1226,7 +1216,10 @@ class QoderResetGUI(QMainWindow):
                 removed_keys = [
                     key
                     for key in list(data.keys())
-                    if any(keyword.lower() in str(key).lower() for keyword in login_keywords)
+                    if any(
+                        keyword.lower() in str(key).lower()
+                        for keyword in login_keywords
+                    )
                 ]
                 for key in removed_keys:
                     data.pop(key, None)
@@ -1242,28 +1235,29 @@ class QoderResetGUI(QMainWindow):
                 self.log(f"   清理登录配置失败: {e}")
 
         self.log(f"   登录身份清理完成，处理了 {cleaned_count} 个项目")
-    
+
     def reset_telemetry(self):
         """Reset telemetry data"""
         try:
             # Check if Qoder is running
             if self.is_qoder_running():
                 QMessageBox.warning(
-                    self, 
-                    self.tr('warning'), 
-                    self.tr('qoder_detected_running') + "\n" + 
-                    self.tr('please_close_qoder')
+                    self,
+                    self.tr("warning"),
+                    self.tr("qoder_detected_running")
+                    + "\n"
+                    + self.tr("please_close_qoder"),
                 )
                 return
-            
+
             # Confirm reset
             reply = QMessageBox.question(
-                self, 
-                self.tr('confirm_reset_telemetry'), 
-                "Are you sure you want to reset Telemetry data?", 
-                QMessageBox.Yes | QMessageBox.No
+                self,
+                self.tr("confirm_reset_telemetry"),
+                "Are you sure you want to reset Telemetry data?",
+                QMessageBox.Yes | QMessageBox.No,
             )
-            
+
             if reply == QMessageBox.Yes:
                 # Execute telemetry reset operation
                 self.log("Resetting Telemetry data...")
@@ -1276,40 +1270,39 @@ class QoderResetGUI(QMainWindow):
                 self.log(f"   New SQM ID: {updated['telemetry.sqmId']}")
 
                 QMessageBox.information(
-                    self, 
-                    self.tr('success'), 
-                    "Telemetry data has been reset successfully."
+                    self,
+                    self.tr("success"),
+                    "Telemetry data has been reset successfully.",
                 )
         except Exception as e:
             # Log error
             self.log(f"Error resetting Telemetry data: {str(e)}")
             QMessageBox.critical(
-                self, 
-                self.tr('error'), 
-                f"Failed to reset Telemetry data: {str(e)}"
+                self, self.tr("error"), f"Failed to reset Telemetry data: {str(e)}"
             )
-    
+
     def reset_machine_id(self):
         """Reset machine ID"""
         try:
             # Check if Qoder is running
             if self.is_qoder_running():
                 QMessageBox.warning(
-                    self, 
-                    self.tr('warning'), 
-                    self.tr('qoder_detected_running') + "\n" + 
-                    self.tr('please_close_qoder')
+                    self,
+                    self.tr("warning"),
+                    self.tr("qoder_detected_running")
+                    + "\n"
+                    + self.tr("please_close_qoder"),
                 )
                 return
-            
+
             # Confirm reset
             reply = QMessageBox.question(
-                self, 
-                self.tr('confirm_reset_machine_id'), 
-                "Are you sure you want to reset the Machine ID?", 
-                QMessageBox.Yes | QMessageBox.No
+                self,
+                self.tr("confirm_reset_machine_id"),
+                "Are you sure you want to reset the Machine ID?",
+                QMessageBox.Yes | QMessageBox.No,
             )
-            
+
             if reply == QMessageBox.Yes:
                 # Execute machine ID reset operation
                 self.log("Resetting Machine ID...")
@@ -1318,107 +1311,107 @@ class QoderResetGUI(QMainWindow):
                 self.log(f"   New Machine ID: {new_machine_id}")
 
                 QMessageBox.information(
-                    self, 
-                    self.tr('success'), 
-                    "Machine ID has been reset successfully."
+                    self, self.tr("success"), "Machine ID has been reset successfully."
                 )
         except Exception as e:
             # Log error
             self.log(f"Error resetting Machine ID: {str(e)}")
             QMessageBox.critical(
-                self, 
-                self.tr('error'), 
-                f"Failed to reset Machine ID: {str(e)}"
+                self, self.tr("error"), f"Failed to reset Machine ID: {str(e)}"
             )
-    
+
     def deep_identity_cleanup(self):
         """Perform deep identity cleanup"""
         try:
             # Check if Qoder is running
             if self.is_qoder_running():
                 QMessageBox.warning(
-                    self, 
-                    self.tr('warning'), 
-                    self.tr('qoder_detected_running') + "\n" + 
-                    self.tr('please_close_qoder')
+                    self,
+                    self.tr("warning"),
+                    self.tr("qoder_detected_running")
+                    + "\n"
+                    + self.tr("please_close_qoder"),
                 )
                 return
-            
+
             # Confirm cleanup
             reply = QMessageBox.question(
-                self, 
-                self.tr('confirm_deep_clean'), 
-                "This will perform a deep identity cleanup. Are you sure?", 
-                QMessageBox.Yes | QMessageBox.No
+                self,
+                self.tr("confirm_deep_clean"),
+                "This will perform a deep identity cleanup. Are you sure?",
+                QMessageBox.Yes | QMessageBox.No,
             )
-            
+
             if reply == QMessageBox.Yes:
                 # Execute deep identity cleanup
                 self.log("Performing deep identity cleanup...")
                 qoder_support_dir = self.get_qoder_data_dir()
                 if not qoder_support_dir.exists():
-                    raise FileNotFoundError(f"Qoder data directory not found: {qoder_support_dir}")
+                    raise FileNotFoundError(
+                        f"Qoder data directory not found: {qoder_support_dir}"
+                    )
 
                 preserve_chat = self.preserve_chat_checkbox.isChecked()
                 self.perform_advanced_identity_cleanup(qoder_support_dir, preserve_chat)
                 self.perform_login_identity_cleanup(qoder_support_dir)
                 self.perform_super_deep_cleanup(qoder_support_dir)
-                
+
                 # Prompt cleanup success
                 QMessageBox.information(
-                    self, 
-                    self.tr('success'), 
-                    "Deep identity cleanup completed successfully."
+                    self,
+                    self.tr("success"),
+                    "Deep identity cleanup completed successfully.",
                 )
         except Exception as e:
             # Log error
             self.log(f"Error during deep identity cleanup: {str(e)}")
             QMessageBox.critical(
-                self, 
-                self.tr('error'), 
-                f"Failed to perform deep identity cleanup: {str(e)}"
+                self,
+                self.tr("error"),
+                f"Failed to perform deep identity cleanup: {str(e)}",
             )
-    
+
     def hardware_fingerprint_reset(self):
         """Reset hardware fingerprint"""
         try:
             # Check if Qoder is running
             if self.is_qoder_running():
                 QMessageBox.warning(
-                    self, 
-                    self.tr('warning'), 
-                    self.tr('qoder_detected_running') + "\n" + 
-                    self.tr('please_close_qoder')
+                    self,
+                    self.tr("warning"),
+                    self.tr("qoder_detected_running")
+                    + "\n"
+                    + self.tr("please_close_qoder"),
                 )
                 return
-            
+
             # Confirm reset
             reply = QMessageBox.question(
-                self, 
-                self.tr('confirm_hardware_fingerprint_reset'), 
-                "This will reset all hardware-related identifiers. Are you sure?", 
-                QMessageBox.Yes | QMessageBox.No
+                self,
+                self.tr("confirm_hardware_fingerprint_reset"),
+                "This will reset all hardware-related identifiers. Are you sure?",
+                QMessageBox.Yes | QMessageBox.No,
             )
-            
+
             if reply == QMessageBox.Yes:
                 # Execute hardware fingerprint reset
                 self.log("Resetting hardware fingerprint...")
                 qoder_support_dir = self.get_qoder_data_dir()
                 self.perform_hardware_fingerprint_reset(qoder_support_dir)
-                
+
                 # Prompt reset success
                 QMessageBox.information(
-                    self, 
-                    self.tr('success'), 
-                    "Hardware fingerprint reset completed successfully."
+                    self,
+                    self.tr("success"),
+                    "Hardware fingerprint reset completed successfully.",
                 )
         except Exception as e:
             # Log error
             self.log(f"Error resetting hardware fingerprint: {str(e)}")
             QMessageBox.critical(
-                self, 
-                self.tr('error'), 
-                f"Failed to reset hardware fingerprint: {str(e)}"
+                self,
+                self.tr("error"),
+                f"Failed to reset hardware fingerprint: {str(e)}",
             )
 
     def one_click_reset(self):
@@ -1448,38 +1441,32 @@ class QoderResetGUI(QMainWindow):
                         "Failed to close Qoder. Please close it manually and retry.",
                     )
                     return
-            
+
             # 确认操作
             reply = QMessageBox.question(
-                self, 
-                self.tr('confirm_one_click'), 
-                "Are you sure you want to perform a one-click reset?", 
-                QMessageBox.Yes | QMessageBox.No
+                self,
+                self.tr("confirm_one_click"),
+                "Are you sure you want to perform a one-click reset?",
+                QMessageBox.Yes | QMessageBox.No,
             )
-            
+
             if reply == QMessageBox.Yes:
                 preserve_chat = self.preserve_chat_checkbox.isChecked()
-                
+
                 # 执行重置操作
                 self.log("Performing one-click reset...")
                 self.perform_full_reset(preserve_chat=preserve_chat)
-                
+
                 # 提示操作完成
                 QMessageBox.information(
-                    self, 
-                    self.tr('success'), 
-                    "One-click reset completed successfully."
+                    self, self.tr("success"), "One-click reset completed successfully."
                 )
-                
+
                 self.log("One-click reset completed.")
         except Exception as e:
             # 记录错误
             self.log(f"Error during one-click reset: {str(e)}")
-            QMessageBox.critical(
-                self, 
-                self.tr('error'), 
-                f"An error occurred: {str(e)}"
-            )
+            QMessageBox.critical(self, self.tr("error"), f"An error occurred: {str(e)}")
 
     def perform_full_reset(self, preserve_chat=True):
         """执行完整重置"""
@@ -1492,16 +1479,19 @@ class QoderResetGUI(QMainWindow):
         self.log("1. 重置机器ID...")
         reset_qoder_machine_id(qoder_support_dir)
         self.log("   主机器ID已重置")
-        
+
         # 增强：创建多个可能的机器ID文件
         additional_id_files = [
-            "deviceid", "hardware_uuid", "system_uuid", 
-            "platform_id", "installation_id"
+            "deviceid",
+            "hardware_uuid",
+            "system_uuid",
+            "platform_id",
+            "installation_id",
         ]
         for id_file in additional_id_files:
             file_path = qoder_support_dir / id_file
             new_id = str(uuid.uuid4())
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 f.write(new_id)
             self.log(f"   已创建: {id_file}")
 
@@ -1561,12 +1551,23 @@ class QoderResetGUI(QMainWindow):
         # 3. 清理缓存（增强版）
         self.log("3. 清理缓存数据...")
         cache_dirs = [
-            "Cache", "blob_storage", "Code Cache", "SharedClientCache",
-            "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache",
+            "Cache",
+            "blob_storage",
+            "Code Cache",
+            "SharedClientCache",
+            "GPUCache",
+            "DawnGraphiteCache",
+            "DawnWebGPUCache",
             # 新增：更多可能包含指纹的缓存
-            "ShaderCache", "DawnCache", "Dictionaries",
-            "CachedData", "CachedProfilesData", "CachedExtensions",
-            "IndexedDB", "CacheStorage", "WebSQL"
+            "ShaderCache",
+            "DawnCache",
+            "Dictionaries",
+            "CachedData",
+            "CachedProfilesData",
+            "CachedExtensions",
+            "IndexedDB",
+            "CacheStorage",
+            "WebSQL",
         ]
 
         cleaned = 0
@@ -1580,35 +1581,55 @@ class QoderResetGUI(QMainWindow):
                     pass
 
         self.log(f"   已清理 {cleaned} 个缓存目录")
-        
+
         # 4. 清理身份识别文件（增强版）
         self.log("4. 清理身份识别文件...")
         identity_files = [
             "Network Persistent State",  # 网络服务器连接历史和指纹
             "TransportSecurity",  # HSTS等安全策略记录
-            "Trust Tokens", "Trust Tokens-journal",  # 信任令牌数据库
-            "SharedStorage", "SharedStorage-wal",  # 共享存储数据库
+            "Trust Tokens",
+            "Trust Tokens-journal",  # 信任令牌数据库
+            "SharedStorage",
+            "SharedStorage-wal",  # 共享存储数据库
             "Preferences",  # 用户偏好设置（可能包含指纹）
             "Secure Preferences",  # 安全偏好设置
             "Login Credentials",  # 登录凭据（如果存在）
-            "Web Data", "Web Data-journal",  # Web数据数据库（如果存在）
+            "Web Data",
+            "Web Data-journal",  # Web数据数据库（如果存在）
             "cert_transparency_reporter_state.json",  # 证书透明度状态
             "Local State",  # Chromium本地状态（包含加密密钥）
             "NetworkDataMigrated",  # 网络数据迁移标记
             # 新增：硬件指纹相关文件
-            "DeviceMetadata", "HardwareInfo", "SystemInfo",
-            "QuotaManager", "QuotaManager-journal",
-            "origin_bound_certs", "Network Action Predictor",
-            "AutofillStrikeDatabase", "AutofillStrikeDatabase-journal",
-            "Feature Engagement Tracker", "PasswordStoreDefault",
-            "PreferredApps", "UserPrefs", "UserPrefs.backup",
-            "Platform Notifications", "VideoDecodeStats",
-            "OriginTrials", "BrowserMetrics", "SafeBrowsing",
-            "Visited Links", "History", "History-journal",
-            "Favicons", "Favicons-journal", "Shortcuts", "Shortcuts-journal",
-            "Top Sites", "Top Sites-journal"
+            "DeviceMetadata",
+            "HardwareInfo",
+            "SystemInfo",
+            "QuotaManager",
+            "QuotaManager-journal",
+            "origin_bound_certs",
+            "Network Action Predictor",
+            "AutofillStrikeDatabase",
+            "AutofillStrikeDatabase-journal",
+            "Feature Engagement Tracker",
+            "PasswordStoreDefault",
+            "PreferredApps",
+            "UserPrefs",
+            "UserPrefs.backup",
+            "Platform Notifications",
+            "VideoDecodeStats",
+            "OriginTrials",
+            "BrowserMetrics",
+            "SafeBrowsing",
+            "Visited Links",
+            "History",
+            "History-journal",
+            "Favicons",
+            "Favicons-journal",
+            "Shortcuts",
+            "Shortcuts-journal",
+            "Top Sites",
+            "Top Sites-journal",
         ]
-        
+
         identity_cleaned = 0
         for identity_file in identity_files:
             file_path = qoder_support_dir / identity_file
@@ -1619,7 +1640,7 @@ class QoderResetGUI(QMainWindow):
                     identity_cleaned += 1
                 except Exception as e:
                     self.log(f"   清除失败 {identity_file}: {e}")
-        
+
         # 5. 清理存储目录
         storage_dirs = [
             "Service Worker",  # 服务工作者缓存
@@ -1629,29 +1650,33 @@ class QoderResetGUI(QMainWindow):
             "clp",  # 剪贴板数据，可能包含敏感信息
             "logs",  # 日志文件，可能记录用户活动
             "Backups",  # 备份文件，可能包含历史身份信息
-            "CachedExtensionVSIXs"  # 扩展缓存，显示用户安装的扩展
+            "CachedExtensionVSIXs",  # 扩展缓存，显示用户安装的扩展
         ]
-        
+
         # 根据是否保留对话记录来决定清理哪些存储目录
         if not preserve_chat:
             # 如果不保留对话记录，清理所有存储目录
-            storage_dirs.extend([
-                "Local Storage",  # 本地存储数据库（可能包含对话索引）
-                "Session Storage",  # 会话存储
-                "WebStorage",  # Web存储
-                "Shared Dictionary"  # 共享字典
-            ])
+            storage_dirs.extend(
+                [
+                    "Local Storage",  # 本地存储数据库（可能包含对话索引）
+                    "Session Storage",  # 会话存储
+                    "WebStorage",  # Web存储
+                    "Shared Dictionary",  # 共享字典
+                ]
+            )
             self.log("   不保留对话模式：清理所有存储目录")
         else:
             # 如果保留对话记录，保留可能包含对话索引的存储
             # 但仍需清理可能包含身份信息的存储
-            storage_dirs.extend([
-                "Session Storage",  # 会话存储（可能包含身份信息）
-                "WebStorage",  # Web存储（可能包含身份信息）
-                "Shared Dictionary"  # 共享字典
-            ])
+            storage_dirs.extend(
+                [
+                    "Session Storage",  # 会话存储（可能包含身份信息）
+                    "WebStorage",  # Web存储（可能包含身份信息）
+                    "Shared Dictionary",  # 共享字典
+                ]
+            )
             self.log("   保留对话模式：保留 Local Storage（可能包含对话索引）")
-        
+
         for storage_dir in storage_dirs:
             storage_path = qoder_support_dir / storage_dir
             if storage_path.exists():
@@ -1661,9 +1686,9 @@ class QoderResetGUI(QMainWindow):
                     identity_cleaned += 1
                 except Exception as e:
                     self.log(f"   清除失败 {storage_dir}: {e}")
-        
+
         self.log(f"   已清理 {identity_cleaned} 个身份识别文件/目录")
-        
+
         # 5. 执行高级身份清理（新增）
         self.log("5. 执行高级身份清理...")
         self.perform_advanced_identity_cleanup(qoder_support_dir, preserve_chat)
@@ -1675,7 +1700,7 @@ class QoderResetGUI(QMainWindow):
         # 7. 执行硬件指纹重置（新增 - 最强反检测）
         self.log("7. 执行硬件指纹重置...")
         self.perform_hardware_fingerprint_reset(qoder_support_dir)
-        
+
         # 8. 执行超级深度清理（新增增强功能）
         self.log("8. 执行超级深度清理...")
         self.perform_super_deep_cleanup(qoder_support_dir)
@@ -1693,7 +1718,7 @@ class QoderResetGUI(QMainWindow):
         try:
             self.log("开始高级身份清理...")
             cleaned_count = 0
-            
+
             # 1. 清理 SharedClientCache 内部文件
             shared_cache = qoder_support_dir / "SharedClientCache"
             if shared_cache.exists():
@@ -1708,7 +1733,7 @@ class QoderResetGUI(QMainWindow):
                             cleaned_count += 1
                         except Exception as e:
                             self.log(f"   清除失败 {file_name}: {e}")
-                
+
                 # 总是清理 cache 目录（缓存数据）
                 cache_dir = shared_cache / "cache"
                 if cache_dir.exists():
@@ -1718,7 +1743,7 @@ class QoderResetGUI(QMainWindow):
                         cleaned_count += 1
                     except Exception as e:
                         self.log(f"   清除失败 cache: {e}")
-                
+
                 # 根据保留对话设置决定是否清理 index 目录
                 index_dir = shared_cache / "index"
                 if index_dir.exists():
@@ -1734,21 +1759,25 @@ class QoderResetGUI(QMainWindow):
                         # 保留对话：只清理非对话相关的索引
                         # 保留可能包含对话搜索索引的文件
                         for index_item in index_dir.iterdir():
-                            if index_item.is_dir() and 'chat' not in index_item.name.lower():
+                            if (
+                                index_item.is_dir()
+                                and "chat" not in index_item.name.lower()
+                            ):
                                 try:
                                     shutil.rmtree(index_item)
-                                    self.log(f"   已清除: SharedClientCache/index/{index_item.name}")
+                                    self.log(
+                                        f"   已清除: SharedClientCache/index/{index_item.name}"
+                                    )
                                     cleaned_count += 1
                                 except Exception as e:
-                                    self.log(f"   清除失败 index/{index_item.name}: {e}")
+                                    self.log(
+                                        f"   清除失败 index/{index_item.name}: {e}"
+                                    )
                         self.log("   保留对话模式：保留可能的对话索引")
-            
+
             # 2. 清理系统级别的身份文件
-            system_files = [
-                "code.lock",
-                "languagepacks.json"
-            ]
-            
+            system_files = ["code.lock", "languagepacks.json"]
+
             for sys_file in system_files:
                 file_path = qoder_support_dir / sys_file
                 if file_path.exists():
@@ -1758,7 +1787,7 @@ class QoderResetGUI(QMainWindow):
                         cleaned_count += 1
                     except Exception as e:
                         self.log(f"   清除失败 {sys_file}: {e}")
-            
+
             # 3. 清理崩溃报告目录（可能包含设备信息）
             crashpad_dir = qoder_support_dir / "Crashpad"
             if crashpad_dir.exists():
@@ -1768,7 +1797,7 @@ class QoderResetGUI(QMainWindow):
                     cleaned_count += 1
                 except Exception as e:
                     self.log(f"   清除失败 Crashpad: {e}")
-            
+
             # 4. 清理缓存目录（CachedData和 CachedProfilesData）
             cached_dirs = ["CachedData", "CachedProfilesData"]
             for cached_dir in cached_dirs:
@@ -1780,9 +1809,10 @@ class QoderResetGUI(QMainWindow):
                         cleaned_count += 1
                     except Exception as e:
                         self.log(f"   清除失败 {cached_dir}: {e}")
-            
+
             # 5. 清理 socket 文件
             import glob
+
             socket_pattern = str(qoder_support_dir / "*.sock")
             socket_files = glob.glob(socket_pattern)
             for socket_file in socket_files:
@@ -1792,18 +1822,28 @@ class QoderResetGUI(QMainWindow):
                     cleaned_count += 1
                 except Exception as e:
                     self.log(f"   清除失败 {Path(socket_file).name}: {e}")
-            
+
             # 6. 清理设备指纹和活动记录文件（新增）
             fingerprint_and_activity_files = [
-                "DeviceMetadata", "HardwareInfo", "SystemInfo",
-                "QuotaManager", "QuotaManager-journal",
-                "ActivityLog", "EventLog", "UserActivityLog",
-                "origin_bound_certs", "Network Action Predictor",
-                "AutofillStrikeDatabase", "AutofillStrikeDatabase-journal",
-                "Feature Engagement Tracker", "PasswordStoreDefault",
-                "PreferredApps", "UserPrefs", "UserPrefs.backup"
+                "DeviceMetadata",
+                "HardwareInfo",
+                "SystemInfo",
+                "QuotaManager",
+                "QuotaManager-journal",
+                "ActivityLog",
+                "EventLog",
+                "UserActivityLog",
+                "origin_bound_certs",
+                "Network Action Predictor",
+                "AutofillStrikeDatabase",
+                "AutofillStrikeDatabase-journal",
+                "Feature Engagement Tracker",
+                "PasswordStoreDefault",
+                "PreferredApps",
+                "UserPrefs",
+                "UserPrefs.backup",
             ]
-            
+
             for file_name in fingerprint_and_activity_files:
                 file_path = qoder_support_dir / file_name
                 if file_path.exists():
@@ -1816,7 +1856,7 @@ class QoderResetGUI(QMainWindow):
                         cleaned_count += 1
                     except Exception as e:
                         self.log(f"   清除失败 {file_name}: {e}")
-            
+
             # 7. 清理数据库目录内的所有文件（新增）
             databases_dir = qoder_support_dir / "databases"
             if databases_dir.exists():
@@ -1826,15 +1866,19 @@ class QoderResetGUI(QMainWindow):
                     cleaned_count += 1
                 except Exception as e:
                     self.log(f"   清除失败 databases: {e}")
-            
+
             # 8. 清理 Electron 相关的持久化数据（新增）
             electron_files = [
-                "Dictionaries", "Platform Notifications",
-                "ShaderCache", "VideoDecodeStats",
-                "OriginTrials", "BrowserMetrics",
-                "AutofillRegexes", "SafeBrowsing"
+                "Dictionaries",
+                "Platform Notifications",
+                "ShaderCache",
+                "VideoDecodeStats",
+                "OriginTrials",
+                "BrowserMetrics",
+                "AutofillRegexes",
+                "SafeBrowsing",
             ]
-            
+
             for electron_file in electron_files:
                 file_path = qoder_support_dir / electron_file
                 if file_path.exists():
@@ -1847,9 +1891,9 @@ class QoderResetGUI(QMainWindow):
                         cleaned_count += 1
                     except Exception as e:
                         self.log(f"   清除失败 {electron_file}: {e}")
-            
+
             self.log(f"   高级身份清理完成，处理了 {cleaned_count} 个项目")
-            
+
         except Exception as e:
             self.log(f"   高级身份清理失败: {e}")
 
@@ -1868,20 +1912,28 @@ class QoderResetGUI(QMainWindow):
                         if chat_sessions.exists():
                             try:
                                 shutil.rmtree(chat_sessions)
-                                self.log(f"   已清除: {chat_sessions.relative_to(qoder_support_dir)}")
+                                self.log(
+                                    f"   已清除: {chat_sessions.relative_to(qoder_support_dir)}"
+                                )
                                 cleared += 1
                             except Exception as e:
-                                self.log(f"   清除失败 {chat_sessions.relative_to(qoder_support_dir)}: {e}")
+                                self.log(
+                                    f"   清除失败 {chat_sessions.relative_to(qoder_support_dir)}: {e}"
+                                )
 
                         # 清除chatEditingSessions目录
                         chat_editing = workspace_dir / "chatEditingSessions"
                         if chat_editing.exists():
                             try:
                                 shutil.rmtree(chat_editing)
-                                self.log(f"   已清除: {chat_editing.relative_to(qoder_support_dir)}")
+                                self.log(
+                                    f"   已清除: {chat_editing.relative_to(qoder_support_dir)}"
+                                )
                                 cleared += 1
                             except Exception as e:
-                                self.log(f"   清除失败 {chat_editing.relative_to(qoder_support_dir)}: {e}")
+                                self.log(
+                                    f"   清除失败 {chat_editing.relative_to(qoder_support_dir)}: {e}"
+                                )
 
             # 2. 清除历史记录
             history_dir = qoder_support_dir / "User/History"
@@ -1907,22 +1959,25 @@ class QoderResetGUI(QMainWindow):
             user_data_file = qoder_support_dir / "User/globalStorage/storage.json"
             if user_data_file.exists():
                 try:
-                    with open(user_data_file, 'r', encoding='utf-8') as f:
+                    with open(user_data_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
 
                     # 清除对话相关的键
-                    chat_keys = [key for key in data.keys() if
-                               'chat' in key.lower() or
-                               'conversation' in key.lower() or
-                               'history' in key.lower() or
-                               'session' in key.lower()]
+                    chat_keys = [
+                        key
+                        for key in data.keys()
+                        if "chat" in key.lower()
+                        or "conversation" in key.lower()
+                        or "history" in key.lower()
+                        or "session" in key.lower()
+                    ]
 
                     if chat_keys:
                         for key in chat_keys:
                             del data[key]
                             self.log(f"   已清除配置: {key}")
 
-                        with open(user_data_file, 'w', encoding='utf-8') as f:
+                        with open(user_data_file, "w", encoding="utf-8") as f:
                             json.dump(data, f, indent=4, ensure_ascii=False)
 
                         cleared += 1
@@ -1939,7 +1994,7 @@ class QoderResetGUI(QMainWindow):
         """打开GitHub链接"""
         self.log("打开GitHub链接...")
         webbrowser.open("https://github.com/VoDaiLocz/Qoder-Free/issues")
-    
+
     def _write_fake_hardware_info(self, qoder_support_dir):
         """Create fake hardware information used by hardware fingerprint reset."""
         try:
@@ -1949,30 +2004,30 @@ class QoderResetGUI(QMainWindow):
                 # Generate appropriate fake hardware information based on system type
                 system_type = platform.system()
                 self.log(f"   Detected system type: {system_type}")
-                
+
                 if system_type == "Darwin":  # macOS
                     fake_hardware_info = {
                         "cpu": {
                             "name": f"Apple M{random.randint(2, 5)} Pro",
                             "cores": random.choice([8, 10, 12, 16]),
                             "threads": random.choice([8, 10, 12, 16]),
-                            "frequency": f"{random.uniform(2.0, 4.0):.1f}GHz"
+                            "frequency": f"{random.uniform(2.0, 4.0):.1f}GHz",
                         },
                         "gpu": {
                             "name": f"Apple M{random.randint(2, 5)} Pro GPU",
                             "memory": f"{random.choice([16, 24, 32])}GB",
-                            "cores": random.choice([16, 19, 24, 32])
+                            "cores": random.choice([16, 19, 24, 32]),
                         },
                         "memory": {
                             "total": f"{random.choice([16, 24, 32, 64])}GB",
                             "type": "LPDDR5",
-                            "speed": f"{random.choice([6400, 7467])}MT/s"
-                        }
+                            "speed": f"{random.choice([6400, 7467])}MT/s",
+                        },
                     }
                 elif system_type == "Windows":  # Windows
                     cpu_brands = ["Intel", "AMD"]
                     cpu_brand = random.choice(cpu_brands)
-                    
+
                     if cpu_brand == "Intel":
                         cpu_series = random.choice(["Core i5", "Core i7", "Core i9"])
                         cpu_gen = random.randint(12, 14)
@@ -1982,40 +2037,44 @@ class QoderResetGUI(QMainWindow):
                         cpu_series = random.choice(["Ryzen 5", "Ryzen 7", "Ryzen 9"])
                         cpu_gen = random.randint(5000, 7000)
                         cpu_name = f"AMD {cpu_series} {cpu_gen}X"
-                    
+
                     gpu_brands = ["NVIDIA", "AMD", "Intel"]
                     gpu_brand = random.choice(gpu_brands)
-                    
+
                     if gpu_brand == "NVIDIA":
-                        gpu_series = random.choice(["RTX 4060", "RTX 4070", "RTX 4080", "RTX 4090"])
+                        gpu_series = random.choice(
+                            ["RTX 4060", "RTX 4070", "RTX 4080", "RTX 4090"]
+                        )
                         gpu_name = f"NVIDIA GeForce {gpu_series}"
                         gpu_memory = f"{random.choice([8, 12, 16, 24])}GB"
                     elif gpu_brand == "AMD":
-                        gpu_series = random.choice(["RX 7600", "RX 7700 XT", "RX 7800 XT", "RX 7900 XTX"])
+                        gpu_series = random.choice(
+                            ["RX 7600", "RX 7700 XT", "RX 7800 XT", "RX 7900 XTX"]
+                        )
                         gpu_name = f"AMD Radeon {gpu_series}"
                         gpu_memory = f"{random.choice([8, 12, 16, 20])}GB"
                     else:  # Intel
                         gpu_series = random.choice(["Arc A750", "Arc A770", "Iris Xe"])
                         gpu_name = f"Intel {gpu_series}"
                         gpu_memory = f"{random.choice([8, 12, 16])}GB"
-                    
+
                     fake_hardware_info = {
                         "cpu": {
                             "name": cpu_name,
                             "cores": random.choice([6, 8, 12, 16, 24]),
                             "threads": random.choice([12, 16, 20, 24, 32]),
-                            "frequency": f"{random.uniform(3.0, 5.0):.1f}GHz"
+                            "frequency": f"{random.uniform(3.0, 5.0):.1f}GHz",
                         },
                         "gpu": {
                             "name": gpu_name,
                             "memory": gpu_memory,
-                            "cores": random.choice([1024, 1536, 2048, 2560])
+                            "cores": random.choice([1024, 1536, 2048, 2560]),
                         },
                         "memory": {
                             "total": f"{random.choice([16, 24, 32])}GB",
                             "type": "LPDDR5",
-                            "speed": f"{random.choice([4266, 5500, 6400])}MHz"
-                        }
+                            "speed": f"{random.choice([4266, 5500, 6400])}MHz",
+                        },
                     }
                 else:
                     # Default case for other systems
@@ -2024,30 +2083,30 @@ class QoderResetGUI(QMainWindow):
                             "name": "Generic CPU",
                             "cores": random.choice([4, 6, 8]),
                             "threads": random.choice([8, 12, 16]),
-                            "frequency": f"{random.uniform(2.0, 4.0):.1f}GHz"
+                            "frequency": f"{random.uniform(2.0, 4.0):.1f}GHz",
                         },
                         "gpu": {
                             "name": "Generic GPU",
                             "memory": f"{random.choice([4, 8, 12])}GB",
-                            "cores": random.choice([512, 1024, 1536])
+                            "cores": random.choice([512, 1024, 1536]),
                         },
                         "memory": {
                             "total": f"{random.choice([8, 16, 24])}GB",
                             "type": "DDR4",
-                            "speed": f"{random.choice([2400, 3200, 4000])}MHz"
-                        }
+                            "speed": f"{random.choice([2400, 3200, 4000])}MHz",
+                        },
                     }
-                
+
                 # Write fake hardware information to a file
                 hardware_file = qoder_support_dir / "hardware_info.json"
-                with open(hardware_file, 'w', encoding='utf-8') as f:
+                with open(hardware_file, "w", encoding="utf-8") as f:
                     json.dump(fake_hardware_info, f, indent=4, ensure_ascii=False)
-                
+
                 self.log("   Successfully created fake hardware information")
-            
+
             except Exception as e:
                 self.log(f"   Failed to create fake hardware information: {e}")
-        
+
         except Exception as e:
             self.log(f"Error during hardware fingerprint reset: {e}")
             raise
@@ -2057,44 +2116,84 @@ class QoderResetGUI(QMainWindow):
         try:
             self.log("🔥 开始安全的超级深度清理...")
             cleaned_count = 0
-            
+
             # 1. 清理系统级别的身份文件
             self.log("1. 清理系统级别身份文件...")
             system_identity_files = [
                 # 日志和临时文件
-                "logs", "tmp", "temp", "crash_dumps",
+                "logs",
+                "tmp",
+                "temp",
+                "crash_dumps",
                 # 更多可能的身份识别文件
-                "identity.json", "machine.json", "device.json",
-                "fingerprint.json", "tracking.json", "analytics.json",
+                "identity.json",
+                "machine.json",
+                "device.json",
+                "fingerprint.json",
+                "tracking.json",
+                "analytics.json",
                 # 浏览器相关文件
-                "BrowserUserAgent", "ClientHints", "NavigatorInfo",
-                "ScreenInfo", "TimezoneInfo", "LanguageInfo",
+                "BrowserUserAgent",
+                "ClientHints",
+                "NavigatorInfo",
+                "ScreenInfo",
+                "TimezoneInfo",
+                "LanguageInfo",
                 # 网络相关文件
-                "DNSCache", "HTTPCache", "ProxySettings",
-                "NetworkConfiguration", "ConnectionHistory",
+                "DNSCache",
+                "HTTPCache",
+                "ProxySettings",
+                "NetworkConfiguration",
+                "ConnectionHistory",
                 # 系统信息文件
-                "OSInfo", "HardwareProfile", "SystemMetrics",
-                "PerformanceInfo", "MemoryInfo", "DiskInfo",
+                "OSInfo",
+                "HardwareProfile",
+                "SystemMetrics",
+                "PerformanceInfo",
+                "MemoryInfo",
+                "DiskInfo",
                 # 用户活动相关
-                "UserActivity", "AppUsage", "FeatureUsage",
-                "InteractionHistory", "AccessLog", "AuditLog",
+                "UserActivity",
+                "AppUsage",
+                "FeatureUsage",
+                "InteractionHistory",
+                "AccessLog",
+                "AuditLog",
                 # 安全相关文件
-                "SecuritySettings", "CertificateStore", "TrustStore",
-                "EncryptionKeys", "AuthTokens", "SessionKeys",
+                "SecuritySettings",
+                "CertificateStore",
+                "TrustStore",
+                "EncryptionKeys",
+                "AuthTokens",
+                "SessionKeys",
                 # 缓存相关文件
-                "MetadataCache", "ThumbnailCache", "IndexCache",
-                "SearchCache", "QueryCache", "ResultsCache",
+                "MetadataCache",
+                "ThumbnailCache",
+                "IndexCache",
+                "SearchCache",
+                "QueryCache",
+                "ResultsCache",
                 # 扩展和插件相关
-                "ExtensionData", "PluginData", "AddonData",
-                "ExtensionPrefs", "PluginPrefs", "AddonPrefs",
+                "ExtensionData",
+                "PluginData",
+                "AddonData",
+                "ExtensionPrefs",
+                "PluginPrefs",
+                "AddonPrefs",
                 # 更多 WebKit 相关文件
-                "WebKitCache", "WebProcessCache", "PluginProcessCache",
-                "RenderProcessCache", "GPUProcessCache",
+                "WebKitCache",
+                "WebProcessCache",
+                "PluginProcessCache",
+                "RenderProcessCache",
+                "GPUProcessCache",
                 # 更多 Chromium 相关文件
-                "ChromiumState", "ChromiumPrefs", "ChromiumHistory",
-                "ChromiumCookies", "ChromiumSessions"
+                "ChromiumState",
+                "ChromiumPrefs",
+                "ChromiumHistory",
+                "ChromiumCookies",
+                "ChromiumSessions",
             ]
-            
+
             for file_name in system_identity_files:
                 file_path = qoder_support_dir / file_name
                 if file_path.exists():
@@ -2107,14 +2206,22 @@ class QoderResetGUI(QMainWindow):
                         cleaned_count += 1
                     except Exception as e:
                         self.log(f"   ⚠️  清除失败 {file_name}: {e}")
-            
+
             # 2. 谨慎清理指定扩展名的可疑文件（增加安全检查）
             self.log("2. 谨慎清理可疑扩展名文件...")
             suspicious_extensions = [
-                ".tmp", ".temp", ".cache", ".lock", ".pid", ".sock", 
-                ".session", ".fingerprint", ".tracking", ".analytics"
+                ".tmp",
+                ".temp",
+                ".cache",
+                ".lock",
+                ".pid",
+                ".sock",
+                ".session",
+                ".fingerprint",
+                ".tracking",
+                ".analytics",
             ]
-            
+
             # 🚫 绝对安全白名单 - 永远不删除的重要文件
             safe_keywords = [
                 "settings",
@@ -2126,30 +2233,53 @@ class QoderResetGUI(QMainWindow):
                 "certificate",
             ]
             protected_keywords = [
-                "settings", "config", "workspace", "preference", "user",
-                "important", "backup", "license", "key", "certificate", 
-                "password", "auth", "secret", "critical", "system",
-                "apple", "microsoft", "windows", "macos", "safari", "chrome"
+                "settings",
+                "config",
+                "workspace",
+                "preference",
+                "user",
+                "important",
+                "backup",
+                "license",
+                "key",
+                "certificate",
+                "password",
+                "auth",
+                "secret",
+                "critical",
+                "system",
+                "apple",
+                "microsoft",
+                "windows",
+                "macos",
+                "safari",
+                "chrome",
             ]
-            
+
             # ✅ 只清理与这些应用相关的文件
-            qoder_keywords = ['qoder', 'vscode', 'electron', 'code-', 'ms-vscode']
-            
+            qoder_keywords = ["qoder", "vscode", "electron", "code-", "ms-vscode"]
+
             for root, dirs, files in os.walk(qoder_support_dir):
                 for file in files:
                     file_path = Path(root) / file
                     file_ext = file_path.suffix.lower()
-                    
+
                     if file_ext in suspicious_extensions:
                         # 安全检查：跳过重要文件
-                        is_safe_file = any(safe_word in file.lower() for safe_word in safe_keywords)
-                        
+                        is_safe_file = any(
+                            safe_word in file.lower() for safe_word in safe_keywords
+                        )
+
                         # 🛡️ 多重安全检查
-                        is_protected = any(keyword in file.lower() for keyword in protected_keywords)
+                        is_protected = any(
+                            keyword in file.lower() for keyword in protected_keywords
+                        )
                         is_in_qoder_dir = str(qoder_support_dir) in str(file_path)
-                        is_qoder_related = any(keyword in file.lower() or keyword in root.lower() 
-                                             for keyword in qoder_keywords)
-                        
+                        is_qoder_related = any(
+                            keyword in file.lower() or keyword in root.lower()
+                            for keyword in qoder_keywords
+                        )
+
                         # ✅ 只有同时满足以下条件才删除：
                         # 1. 在Qoder目录内  2. 与Qoder相关  3. 不在保护列表
                         if is_in_qoder_dir and is_qoder_related and not is_protected:
@@ -2164,13 +2294,13 @@ class QoderResetGUI(QMainWindow):
                                 self.log(f"   ℹ️  跳过非相关文件: {file}")
                             if is_safe_file:
                                 self.log(f"   ℹ️  保护重要文件: {file}")
-            
+
             # 3. 清理隐藏文件和目录
             self.log("3. 清理隐藏文件...")
             for root, dirs, files in os.walk(qoder_support_dir):
                 # 清理隐藏文件（以点开头）
                 for file in files:
-                    if file.startswith('.') and file not in ['.gitignore', '.gitkeep']:
+                    if file.startswith(".") and file not in [".gitignore", ".gitkeep"]:
                         file_path = Path(root) / file
                         try:
                             file_path.unlink()
@@ -2178,10 +2308,10 @@ class QoderResetGUI(QMainWindow):
                             cleaned_count += 1
                         except Exception as e:
                             self.log(f"   ⚠️  清除失败 {file}: {e}")
-                
+
                 # 清理隐藏目录（以点开头）
                 for dir_name in dirs[:]:
-                    if dir_name.startswith('.') and dir_name not in ['.git']:
+                    if dir_name.startswith(".") and dir_name not in [".git"]:
                         dir_path = Path(root) / dir_name
                         try:
                             shutil.rmtree(dir_path)
@@ -2190,21 +2320,25 @@ class QoderResetGUI(QMainWindow):
                             cleaned_count += 1
                         except Exception as e:
                             self.log(f"   ⚠️  清除失败 {dir_name}: {e}")
-            
+
             # 4. 重置文件权限（防止文件时间戳检测）
             self.log("4. 重置文件权限...")
             try:
                 # 重置整个目录的权限
                 if platform.system() != "Windows":
-                    subprocess.run(['chmod', '-R', '755', str(qoder_support_dir)], check=False, timeout=30)
+                    subprocess.run(
+                        ["chmod", "-R", "755", str(qoder_support_dir)],
+                        check=False,
+                        timeout=30,
+                    )
                     self.log("   ✅ 文件权限已重置")
             except Exception as e:
                 self.log(f"   ⚠️  权限重置失败: {e}")
-            
+
             # 5. Do not create decoy files. Keeping cleanup output minimal makes
             # diagnostics easier and avoids adding new state that users did not ask for.
             self.log("5. 跳过迷惑文件创建，保持清理结果可验证")
-            
+
             # 6. 安全清理系统级别的缓存（macOS）
             if platform.system() == "Darwin":
                 self.log("6. 安全清理 macOS 系统级缓存...")
@@ -2212,16 +2346,24 @@ class QoderResetGUI(QMainWindow):
                     # 只清理用户级别的系统缓存，不影响系统稳定性
                     user_system_cache_paths = [
                         Path.home() / "Library/Caches",
-                        Path.home() / "Library/Application Support/com.apple.sharedfilelist",
+                        Path.home()
+                        / "Library/Application Support/com.apple.sharedfilelist",
                     ]
-                    
+
                     for cache_path in user_system_cache_paths:
                         if cache_path.exists() and cache_path != qoder_support_dir:
                             # 只清理与 Qoder/VSCode 相关的文件，不影响其他应用
                             for item in cache_path.iterdir():
                                 item_name_lower = item.name.lower()
-                                if any(keyword in item_name_lower for keyword in 
-                                      ['qoder', 'vscode', 'com.microsoft.vscode', 'electron']):
+                                if any(
+                                    keyword in item_name_lower
+                                    for keyword in [
+                                        "qoder",
+                                        "vscode",
+                                        "com.microsoft.vscode",
+                                        "electron",
+                                    ]
+                                ):
                                     try:
                                         if item.is_dir():
                                             shutil.rmtree(item)
@@ -2230,41 +2372,51 @@ class QoderResetGUI(QMainWindow):
                                         self.log(f"   ✅ 已清理系统缓存: {item.name}")
                                         cleaned_count += 1
                                     except Exception as e:
-                                        self.log(f"   ⚠️  系统缓存清理失败 {item.name}: {e}")
-                    
+                                        self.log(
+                                            f"   ⚠️  系统缓存清理失败 {item.name}: {e}"
+                                        )
+
                     # 不清理 LaunchServices，避免影响系统功能
                     self.log("   ℹ️  为保护系统稳定性，跳过 LaunchServices 清理")
-                    
+
                 except Exception as e:
                     self.log(f"   ⚠️  macOS 系统缓存清理失败: {e}")
-            
+
             elif platform.system() == "Windows":
                 self.log("6. 安全清理 Windows 系统级缓存...")
                 try:
                     # 只清理用户级别的缓存，不影响系统
                     user_cache_paths = [
-                        Path(os.environ.get('LOCALAPPDATA', '')) / "Temp",
-                        Path(os.environ.get('APPDATA', '')) / "Microsoft" / "Windows" / "Recent"
+                        Path(os.environ.get("LOCALAPPDATA", "")) / "Temp",
+                        Path(os.environ.get("APPDATA", ""))
+                        / "Microsoft"
+                        / "Windows"
+                        / "Recent",
                     ]
-                    
+
                     for cache_path in user_cache_paths:
                         if cache_path.exists():
                             for item in cache_path.iterdir():
-                                if any(keyword in item.name.lower() for keyword in ['qoder', 'vscode', 'electron']):
+                                if any(
+                                    keyword in item.name.lower()
+                                    for keyword in ["qoder", "vscode", "electron"]
+                                ):
                                     try:
                                         if item.is_dir():
                                             shutil.rmtree(item)
                                         else:
                                             item.unlink()
-                                        self.log(f"   ✅ 已清理Windows缓存: {item.name}")
+                                        self.log(
+                                            f"   ✅ 已清理Windows缓存: {item.name}"
+                                        )
                                         cleaned_count += 1
                                     except Exception as e:
                                         self.log(f"   ⚠️  清理失败: {e}")
                 except Exception as e:
                     self.log(f"   ⚠️  Windows 系统缓存清理失败: {e}")
-            
+
             self.log(f"   超级深度清理完成，处理了 {cleaned_count} 个项目")
-            
+
         except Exception as e:
             self.log(f"   超级深度清理失败: {e}")
 
@@ -2278,18 +2430,23 @@ class QoderResetGUI(QMainWindow):
 
             # Lệnh kiểm tra tiến trình khác nhau tùy hệ điều hành
             if platform.system() == "Windows":
-                result = subprocess.run(["tasklist", "/FI", "IMAGENAME eq qoder.exe"], 
-                                        capture_output=True, text=True)
+                result = subprocess.run(
+                    ["tasklist", "/FI", "IMAGENAME eq qoder.exe"],
+                    capture_output=True,
+                    text=True,
+                )
                 return "qoder.exe" in result.stdout.lower()
             elif platform.system() == "Darwin":  # macOS
-                result = subprocess.run(["pgrep", "-x", "Qoder"], 
-                                        capture_output=True, text=True)
+                result = subprocess.run(
+                    ["pgrep", "-x", "Qoder"], capture_output=True, text=True
+                )
                 return result.returncode == 0
             elif platform.system() == "Linux":
-                result = subprocess.run(["pgrep", "-x", "qoder"], 
-                                        capture_output=True, text=True)
+                result = subprocess.run(
+                    ["pgrep", "-x", "qoder"], capture_output=True, text=True
+                )
                 return result.returncode == 0
-            
+
             return False
         except Exception as e:
             self.log(f"Error checking Qoder status: {e}")
@@ -2301,48 +2458,51 @@ class QoderResetGUI(QMainWindow):
             # Kiểm tra thư mục tồn tại
             if not qoder_support_dir.exists():
                 raise Exception("Không tìm thấy thư mục Qoder")
-            
+
             # Sinh UUID mới
             import uuid
             import json
             import hashlib
-            
+
             # Tạo các ID mới
             new_machine_id = str(uuid.uuid4())
             new_device_id = str(uuid.uuid4())
             machine_id_hash = hashlib.sha256(new_machine_id.encode()).hexdigest()
-            
+
             # Đường dẫn file storage
             storage_json_file = qoder_support_dir / "User/globalStorage/storage.json"
-            
+
             # Đọc và cập nhật file storage
             if storage_json_file.exists():
-                with open(storage_json_file, 'r', encoding='utf-8') as f:
+                with open(storage_json_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                
+
                 # Cập nhật các trường liên quan đến hardware
-                data['telemetry.machineId'] = machine_id_hash
-                data['telemetry.devDeviceId'] = new_device_id
-                data['machineId'] = machine_id_hash
-                
-                with open(storage_json_file, 'w', encoding='utf-8') as f:
+                data["telemetry.machineId"] = machine_id_hash
+                data["telemetry.devDeviceId"] = new_device_id
+                data["machineId"] = machine_id_hash
+
+                with open(storage_json_file, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=4, ensure_ascii=False)
-            
+
             # Ghi log
-            self.log(f"Reset hardware fingerprint: New Machine ID {machine_id_hash[:16]}...")
+            self.log(
+                f"Reset hardware fingerprint: New Machine ID {machine_id_hash[:16]}..."
+            )
             self.log(f"New Device ID: {new_device_id}")
             self._write_fake_hardware_info(qoder_support_dir)
-            
+
         except Exception as e:
             self.log(f"Error resetting hardware fingerprint: {e}")
             raise
+
 
 def main():
     _configure_qt_runtime()
     app = QApplication(sys.argv)
 
     # 设置应用程序样式
-    app.setStyle('Fusion')
+    app.setStyle("Fusion")
 
     # 设置全局样式表，确保对话框文字和按钮可见
     app.setStyleSheet("""
@@ -2365,6 +2525,7 @@ def main():
     window.show()
 
     sys.exit(app.exec_())
+
 
 if __name__ == "__main__":
     main()
