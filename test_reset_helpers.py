@@ -1,6 +1,9 @@
 import json
+import os
 import uuid
 from pathlib import Path
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt5.QtWidgets import QApplication
 
@@ -84,4 +87,36 @@ def test_full_reset_runs_login_and_deep_cleanup_without_crashing(tmp_path):
     assert "session.id" not in data
     assert not (qoder_dir / "Cookies").exists()
     assert (qoder_dir / "hardware_info.json").is_file()
+    assert app is not None
+
+
+def test_diagnostic_report_redacts_secret_values(tmp_path):
+    qoder_dir = tmp_path / "Qoder"
+    storage_json_file = qoder_dir / "User" / "globalStorage" / "storage.json"
+    storage_json_file.parent.mkdir(parents=True, exist_ok=True)
+    storage_json_file.write_text(
+        json.dumps(
+            {
+                "telemetry.machineId": "machine-secret",
+                "auth.accessToken": "token-secret",
+                "session.id": "session-secret",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (qoder_dir / "machineid").write_text(str(uuid.uuid4()), encoding="utf-8")
+
+    app = QApplication.instance() or QApplication([])
+    window = QoderResetGUI()
+    window.get_qoder_data_dir = lambda: qoder_dir
+    window.is_qoder_running = lambda: False
+
+    report = window.collect_diagnostic_report()
+
+    assert "Qoder-Free version:" in report
+    assert "telemetry key count: 1" in report
+    assert "login/session-like key count: 2" in report
+    assert "machine-secret" not in report
+    assert "token-secret" not in report
+    assert "session-secret" not in report
     assert app is not None

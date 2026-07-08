@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-08
+
+### Added
+- Added a copyable diagnostic report for GitHub issue follow-up without exposing token values.
+- Added visible app guidance that local resets cannot guarantee server-side trial credits or model access.
+
+### Changed
+- Refined the PyQt5 layout for clearer operation grouping, larger responsive buttons, and a more readable log panel.
+- Exposed existing login cleanup, hardware reset, GitHub, and diagnostic actions directly in the main UI.
+- Deep cleanup and hardware reset buttons now execute the actual cleanup/reset logic instead of only showing success messages.
+- Translation lookup now falls back to English for missing keys.
+
+### Removed
+- Removed decoy file creation from super deep cleanup to keep reset output easier to verify.
+
 ## [1.1.0] - 2026-03-14
 
 ### Changed

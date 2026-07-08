@@ -94,10 +94,12 @@ jobs:
           - Modern PyQt5-based GUI with professional styling
           - Version display in GUI status bar
 
-          ### 🔄 Changes in v1.1.0
-          - Upgraded deprecated GitHub Actions for CI/CD reliability
-          - Dropped EOL Python 3.7/3.8 from test matrix (now 3.9, 3.10, 3.11)
-          - Updated release automation with `softprops/action-gh-release` v2
+          ### 🔄 Changes in v1.2.0
+          - Refined the PyQt5 interface with clearer operation grouping and a more readable log panel
+          - Added a copyable diagnostic report for GitHub issue follow-up
+          - Added an in-app note that local resets cannot guarantee server-side trial credits or model access
+          - Fixed deep cleanup and hardware reset buttons so they execute the actual reset logic
+          - Removed decoy file creation to keep cleanup output easier to verify
 
           ### 📦 Downloads
           - **Windows**: `qoder-reset-tool-windows.zip`

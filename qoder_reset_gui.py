@@ -4,7 +4,7 @@ Qoder Reset Tool - Modern GUI Version
 Implemented using PyQt5, fully designed according to user prototype
 """
 
-__version__ = "1.1.1"
+__version__ = "1.2.0"
 
 import os
 import sys
@@ -337,6 +337,8 @@ class QoderResetGUI(QMainWindow):
                 'clear_log': 'Clear Log',
                 'github': 'Github',
                 'language': 'Language',
+                'diagnostic_report': 'Copy Diagnostic Report',
+                'issue_note': 'Note: this tool can reset local Qoder data, but server-side trial credits and model access are controlled by Qoder.',
                 
                 # Log messages
                 'tool_started': 'Qoder-Free reset tool started',
@@ -358,6 +360,10 @@ class QoderResetGUI(QMainWindow):
                 'confirm_one_click': 'Confirm One-Click Reset',
                 'confirm_deep_clean': 'Confirm Deep Cleanup',
                 'confirm_login_clean': 'Confirm Login Identity Cleanup',
+                'confirm_close_qoder': 'Confirm Close Qoder',
+                'confirm_reset_machine_id': 'Confirm Machine ID Reset',
+                'confirm_reset_telemetry': 'Confirm Telemetry Reset',
+                'confirm_hardware_fingerprint_reset': 'Confirm Hardware Fingerprint Reset',
                 'operation_complete': 'Operation Complete',
                 'operation_failed': 'Operation Failed',
                 'error': 'Error',
@@ -472,6 +478,8 @@ class QoderResetGUI(QMainWindow):
                 'clear_log': 'Xóa Nhật Ký',
                 'github': 'Liên Kết GitHub',
                 'language': 'Ngôn Ngữ',
+                'diagnostic_report': 'Sao Chép Báo Cáo Chẩn Đoán',
+                'issue_note': 'Lưu ý: công cụ chỉ đặt lại dữ liệu Qoder cục bộ; trial credit và quyền dùng model có thể do máy chủ Qoder quyết định.',
                 
                 # Các thông báo nhật ký
                 'tool_started': 'Công cụ đặt lại Qoder-Free đã được khởi động',
@@ -493,6 +501,10 @@ class QoderResetGUI(QMainWindow):
                 'confirm_one_click': 'Xác Nhận Đặt Lại Một Chạm',
                 'confirm_deep_clean': 'Xác Nhận Làm Sạch Sâu',
                 'confirm_login_clean': 'Xác Nhận Xóa Thông Tin Đăng Nhập',
+                'confirm_close_qoder': 'Xác Nhận Đóng Qoder',
+                'confirm_reset_machine_id': 'Xác Nhận Đặt Lại ID Máy',
+                'confirm_reset_telemetry': 'Xác Nhận Đặt Lại Telemetry',
+                'confirm_hardware_fingerprint_reset': 'Xác Nhận Đặt Lại Dấu Vân Tay Phần Cứng',
                 'operation_complete': 'Thao Tác Hoàn Tất',
                 'operation_failed': 'Thao Tác Thất Bại',
                 'error': 'Lỗi',
@@ -504,82 +516,81 @@ class QoderResetGUI(QMainWindow):
     
     def tr(self, key):
         """Get translation text for the current language"""
-        return self.translations.get(self.current_language, {}).get(key, key)
+        return (
+            self.translations.get(self.current_language, {}).get(key)
+            or self.translations.get("en", {}).get(key)
+            or key
+        )
     
     def init_ui(self):
         """Initialize the user interface"""
         # Set window properties
-        self.setWindowTitle(self.tr("Qoder Reset Tool"))
-        self.setGeometry(100, 100, 800, 650)
+        self.setWindowTitle(self.tr("window_title"))
+        self.setMinimumSize(860, 680)
+        self.resize(940, 740)
         
         # Set application-wide font
-        font = QFont("Inter", 10)
+        font = QFont("Segoe UI", 10)
         QApplication.setFont(font)
         
         # Create main widget and layout
         main_widget = QWidget()
+        main_widget.setObjectName("appRoot")
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(24, 22, 24, 18)
+        main_layout.setSpacing(14)
         
         # Title Label
         self.title_label = QLabel(self.tr('window_title'))
-        self.title_label.setStyleSheet("""
-            QLabel {
-                font-size: 24px;
-                font-weight: bold;
-                color: #2c3e50;
-                margin-bottom: 10px;
-            }
-        """)
-        main_layout.addWidget(self.title_label, alignment=Qt.AlignCenter)
+        self.title_label.setObjectName("titleLabel")
+        main_layout.addWidget(self.title_label)
         
         # Intro Label
         self.intro_label = QLabel(self.tr('intro_text'))
-        self.intro_label.setStyleSheet("""
-            QLabel {
-                font-size: 14px;
-                color: #7f8c8d;
-                margin-bottom: 20px;
-                text-align: center;
-            }
-        """)
-        main_layout.addWidget(self.intro_label, alignment=Qt.AlignCenter)
+        self.intro_label.setObjectName("introLabel")
+        self.intro_label.setWordWrap(True)
+        main_layout.addWidget(self.intro_label)
+
+        self.issue_note_label = QLabel(self.tr("issue_note"))
+        self.issue_note_label.setObjectName("issueNoteLabel")
+        self.issue_note_label.setWordWrap(True)
+        main_layout.addWidget(self.issue_note_label)
         
         # Language Selector
         language_layout = QHBoxLayout()
-        language_label = QLabel(self.tr('language'))
+        language_layout.setSpacing(10)
+        self.language_label = QLabel(self.tr('language'))
         self.language_selector = QComboBox()
         self.language_selector.addItems(['English', 'Tiếng Việt', '中文', 'Русский'])
         self.language_selector.setCurrentText('English')
         self.language_selector.currentTextChanged.connect(self.change_language)
         
-        language_layout.addWidget(language_label)
+        language_layout.addWidget(self.language_label)
         language_layout.addWidget(self.language_selector)
+        language_layout.addStretch()
         main_layout.addLayout(language_layout)
         
         # Nút một chạm
         self.one_click_btn = self.create_styled_button(
             self.tr('one_click_config'), 
-            '#3498db',  # Màu xanh
+            '#1f6feb',
             self.one_click_reset
         )
-        
-        # Căn giữa nút một chạm
-        button_center_layout = QHBoxLayout()
-        button_center_layout.addStretch()
-        button_center_layout.addWidget(self.one_click_btn)
-        button_center_layout.addStretch()
-        main_layout.addLayout(button_center_layout)
+        self.one_click_btn.setMinimumHeight(52)
+        main_layout.addWidget(self.one_click_btn)
         
         # Bố cục các nút chức năng
+        self.operation_title = QLabel(self.tr('operation_area'))
+        self.operation_title.setObjectName("sectionLabel")
+        main_layout.addWidget(self.operation_title)
+
         button_layout = QGridLayout()
-        button_layout.setSpacing(12)
+        button_layout.setSpacing(10)
         
         # Nút đóng Qoder
         self.close_qoder_btn = self.create_styled_button(
             self.tr('close_qoder'), 
-            '#e74c3c',  # Màu đỏ
+            '#c2410c',
             self.close_qoder
         )
         button_layout.addWidget(self.close_qoder_btn, 0, 0)
@@ -587,7 +598,7 @@ class QoderResetGUI(QMainWindow):
         # Nút đặt lại ID máy
         self.reset_machine_id_btn = self.create_styled_button(
             self.tr('reset_machine_id'), 
-            '#3498db',  # Màu xanh
+            '#2563eb',
             self.reset_machine_id
         )
         button_layout.addWidget(self.reset_machine_id_btn, 0, 1)
@@ -595,66 +606,71 @@ class QoderResetGUI(QMainWindow):
         # Nút đặt lại dữ liệu điện toán
         self.reset_telemetry_btn = self.create_styled_button(
             self.tr('reset_telemetry'), 
-            '#2ecc71',  # Màu xanh lá
+            '#15803d',
             self.reset_telemetry
         )
-        button_layout.addWidget(self.reset_telemetry_btn, 1, 0)
+        button_layout.addWidget(self.reset_telemetry_btn, 0, 2)
+
+        self.login_clean_btn = self.create_styled_button(
+            self.tr('login_identity_clean'),
+            '#475569',
+            self.login_identity_cleanup
+        )
+        button_layout.addWidget(self.login_clean_btn, 1, 0)
         
         # Nút làm sạch danh tính sâu
         self.deep_clean_btn = self.create_styled_button(
             self.tr('deep_identity_clean'), 
-            '#f39c12',  # Màu cam
+            '#a16207',
             self.deep_identity_cleanup
         )
         button_layout.addWidget(self.deep_clean_btn, 1, 1)
+
+        self.hardware_reset_btn = self.create_styled_button(
+            self.tr('hardware_fingerprint_reset'),
+            '#7c3aed',
+            self.hardware_fingerprint_reset
+        )
+        button_layout.addWidget(self.hardware_reset_btn, 1, 2)
+
+        self.diagnostic_btn = self.create_styled_button(
+            self.tr('diagnostic_report'),
+            '#334155',
+            self.copy_diagnostic_report
+        )
+        button_layout.addWidget(self.diagnostic_btn, 2, 0)
+
+        self.github_btn = self.create_styled_button(
+            self.tr('github'),
+            '#0f766e',
+            self.open_github
+        )
+        button_layout.addWidget(self.github_btn, 2, 1)
+
+        self.clear_log_btn = self.create_styled_button(
+            self.tr('clear_log'),
+            '#64748b',
+            self.clear_log
+        )
+        button_layout.addWidget(self.clear_log_btn, 2, 2)
         
         # Thêm bố cục nút vào bố cục chính
         main_layout.addLayout(button_layout)
         
-        # Nút xóa nhật ký
-        clear_log_btn = self.create_styled_button(
-            self.tr('clear_log'), 
-            '#e74c3c',  # Màu đỏ
-            self.clear_log
-        )
-        
-        # Layout căn giữa nút xóa nhật ký
-        clear_log_layout = QHBoxLayout()
-        clear_log_layout.addStretch()
-        clear_log_layout.addWidget(clear_log_btn)
-        clear_log_layout.addStretch()
-        
-        main_layout.addLayout(clear_log_layout)
-        
         # Preserve Chat Checkbox
         self.preserve_chat_checkbox = QCheckBox(self.tr('preserve_chat'))
-        self.preserve_chat_checkbox.setStyleSheet("""
-            QCheckBox {
-                spacing: 8px;
-            }
-            QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
-            }
-        """)
+        self.preserve_chat_checkbox.setChecked(True)
         main_layout.addWidget(self.preserve_chat_checkbox)
         
         # Log Area
         log_layout = QVBoxLayout()
-        log_label = QLabel(self.tr('operation_log'))
+        self.log_title = QLabel(self.tr('operation_log'))
+        self.log_title.setObjectName("sectionLabel")
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        self.log_text.setMinimumHeight(120)
-        self.log_text.setStyleSheet("""
-            QTextEdit {
-                background-color: #f4f6f7;
-                border: 1px solid #e0e4e6;
-                border-radius: 4px;
-                padding: 10px;
-            }
-        """)
+        self.log_text.setMinimumHeight(190)
         
-        log_layout.addWidget(log_label)
+        log_layout.addWidget(self.log_title)
         log_layout.addWidget(self.log_text)
         
         main_layout.addLayout(log_layout)
@@ -665,11 +681,58 @@ class QoderResetGUI(QMainWindow):
         
         # Set overall window style
         self.setStyleSheet("""
-            QMainWindow {
-                background-color: #f4f6f9;
+            QMainWindow, QWidget#appRoot {
+                background-color: #f7f8fa;
             }
             QWidget {
+                color: #111827;
+            }
+            QLabel#titleLabel {
+                color: #0f172a;
+                font-size: 26px;
+                font-weight: 700;
+            }
+            QLabel#introLabel {
+                color: #475569;
+                font-size: 13px;
+                line-height: 1.35;
+            }
+            QLabel#issueNoteLabel {
+                background-color: #fff7ed;
+                border: 1px solid #fed7aa;
+                border-radius: 6px;
+                color: #7c2d12;
+                padding: 8px 10px;
+            }
+            QLabel#sectionLabel {
+                color: #334155;
+                font-size: 13px;
+                font-weight: 700;
+                margin-top: 4px;
+            }
+            QComboBox {
                 background-color: white;
+                border: 1px solid #cbd5e1;
+                border-radius: 5px;
+                padding: 6px 10px;
+                min-width: 150px;
+            }
+            QCheckBox {
+                color: #334155;
+                spacing: 8px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+            }
+            QTextEdit {
+                background-color: #0f172a;
+                border: 1px solid #1e293b;
+                border-radius: 6px;
+                color: #dbeafe;
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 12px;
+                padding: 10px;
             }
         """)
         
@@ -689,23 +752,28 @@ class QoderResetGUI(QMainWindow):
     def create_styled_button(self, text, color, connect_func):
         """Tạo nút với phong cách thống nhất"""
         btn = QPushButton(text)
-        btn.setFixedSize(140, 35)
+        btn.setMinimumHeight(42)
+        btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {color};
                 color: white;
-                font-size: 11px;
-                font-weight: 500;
+                font-size: 12px;
+                font-weight: 700;
                 border: none;
-                border-radius: 5px;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
+                border-radius: 6px;
+                padding: 9px 12px;
             }}
             QPushButton:hover {{
-                background-color: {color}DD;
+                background-color: {color}EE;
             }}
             QPushButton:pressed {{
-                background-color: {color}BB;
+                background-color: {color}CC;
+            }}
+            QPushButton:disabled {{
+                background-color: #94a3b8;
+                color: #e2e8f0;
             }}
         """)
         btn.clicked.connect(connect_func)
@@ -737,6 +805,10 @@ class QoderResetGUI(QMainWindow):
             # Update labels
             self.title_label.setText(self.tr('window_title'))
             self.intro_label.setText(self.tr('intro_text'))
+            self.issue_note_label.setText(self.tr('issue_note'))
+            self.language_label.setText(self.tr('language'))
+            self.operation_title.setText(self.tr('operation_area'))
+            self.log_title.setText(self.tr('operation_log'))
             
             # Update buttons with translations
             button_translations = {
@@ -744,7 +816,12 @@ class QoderResetGUI(QMainWindow):
                 'close_qoder_btn': 'close_qoder',
                 'reset_machine_id_btn': 'reset_machine_id',
                 'reset_telemetry_btn': 'reset_telemetry',
-                'deep_clean_btn': 'deep_identity_clean'
+                'login_clean_btn': 'login_identity_clean',
+                'deep_clean_btn': 'deep_identity_clean',
+                'hardware_reset_btn': 'hardware_fingerprint_reset',
+                'diagnostic_btn': 'diagnostic_report',
+                'clear_log_btn': 'clear_log',
+                'github_btn': 'github',
             }
             
             # Update buttons with translated texts
@@ -777,6 +854,8 @@ class QoderResetGUI(QMainWindow):
         # 更新标签文本
         self.title_label.setText(self.tr('window_title'))
         self.intro_label.setText(self.tr('intro_text'))
+        self.issue_note_label.setText(self.tr('issue_note'))
+        self.language_label.setText(self.tr('language'))
         self.operation_title.setText(self.tr('operation_area'))
         self.log_title.setText(self.tr('operation_log'))
         
@@ -788,6 +867,7 @@ class QoderResetGUI(QMainWindow):
         self.deep_clean_btn.setText(self.tr('deep_identity_clean'))
         self.login_clean_btn.setText(self.tr('login_identity_clean'))
         self.hardware_reset_btn.setText(self.tr('hardware_fingerprint_reset'))
+        self.diagnostic_btn.setText(self.tr('diagnostic_report'))
         self.clear_log_btn.setText(self.tr('clear_log'))
         self.github_btn.setText(self.tr('github'))
         
@@ -897,6 +977,70 @@ class QoderResetGUI(QMainWindow):
         """Clear log contents"""
         self.log_text.clear()
         self.log(self.tr('log_cleared'))
+
+    def collect_diagnostic_report(self):
+        """Collect non-secret state useful for GitHub issue reports."""
+        qoder_support_dir = self.get_qoder_data_dir()
+        lines = [
+            f"Qoder-Free version: {__version__}",
+            f"OS: {platform.system()} {platform.release()} ({platform.machine()})",
+            f"Python: {platform.python_version()}",
+            f"Qoder running: {self.is_qoder_running()}",
+            f"Qoder data dir: {qoder_support_dir}",
+            f"Qoder data dir exists: {qoder_support_dir.exists()}",
+        ]
+
+        machine_id_file = qoder_support_dir / "machineid"
+        lines.append(f"machineid file exists: {machine_id_file.exists()}")
+        if machine_id_file.exists():
+            try:
+                machine_id = machine_id_file.read_text(encoding="utf-8").strip()
+                lines.append(f"machineid prefix: {machine_id[:8]}...")
+            except Exception as exc:
+                lines.append(f"machineid read error: {exc}")
+
+        storage_json_file = qoder_support_dir / "User" / "globalStorage" / "storage.json"
+        lines.append(f"storage.json exists: {storage_json_file.exists()}")
+        if storage_json_file.exists():
+            try:
+                data = json.loads(storage_json_file.read_text(encoding="utf-8"))
+                telemetry_keys = sorted(key for key in data.keys() if "telemetry" in str(key).lower())
+                login_like_keys = sorted(
+                    key
+                    for key in data.keys()
+                    if any(token in str(key).lower() for token in ("auth", "token", "login", "session"))
+                )
+                lines.append(f"telemetry key count: {len(telemetry_keys)}")
+                lines.append(f"telemetry keys: {', '.join(telemetry_keys) or 'none'}")
+                lines.append(f"login/session-like key count: {len(login_like_keys)}")
+            except Exception as exc:
+                lines.append(f"storage.json parse error: {exc}")
+
+        lines.append("")
+        lines.append(
+            "Limit note: local reset can change local identifiers, but trial credits and model access may be decided server-side by Qoder."
+        )
+        return "\n".join(lines)
+
+    def copy_diagnostic_report(self):
+        """Copy diagnostic report and log it for issue follow-up."""
+        try:
+            report = self.collect_diagnostic_report()
+            QApplication.clipboard().setText(report)
+            self.log("Diagnostic report copied to clipboard.")
+            self.log("Use it when replying to GitHub issues #13/#14.")
+            QMessageBox.information(
+                self,
+                self.tr("success"),
+                "Diagnostic report copied to clipboard.",
+            )
+        except Exception as e:
+            self.log(f"Error collecting diagnostic report: {e}")
+            QMessageBox.critical(
+                self,
+                self.tr("error"),
+                f"Failed to collect diagnostic report: {e}",
+            )
     
     def get_qoder_data_dir(self):
         """Get Qoder data directory path (cross-platform support)"""
@@ -1211,6 +1355,14 @@ class QoderResetGUI(QMainWindow):
             if reply == QMessageBox.Yes:
                 # Execute deep identity cleanup
                 self.log("Performing deep identity cleanup...")
+                qoder_support_dir = self.get_qoder_data_dir()
+                if not qoder_support_dir.exists():
+                    raise FileNotFoundError(f"Qoder data directory not found: {qoder_support_dir}")
+
+                preserve_chat = self.preserve_chat_checkbox.isChecked()
+                self.perform_advanced_identity_cleanup(qoder_support_dir, preserve_chat)
+                self.perform_login_identity_cleanup(qoder_support_dir)
+                self.perform_super_deep_cleanup(qoder_support_dir)
                 
                 # Prompt cleanup success
                 QMessageBox.information(
@@ -1251,6 +1403,8 @@ class QoderResetGUI(QMainWindow):
             if reply == QMessageBox.Yes:
                 # Execute hardware fingerprint reset
                 self.log("Resetting hardware fingerprint...")
+                qoder_support_dir = self.get_qoder_data_dir()
+                self.perform_hardware_fingerprint_reset(qoder_support_dir)
                 
                 # Prompt reset success
                 QMessageBox.information(
@@ -1784,7 +1938,7 @@ class QoderResetGUI(QMainWindow):
     def open_github(self):
         """打开GitHub链接"""
         self.log("打开GitHub链接...")
-        webbrowser.open("https://github.com/itandelin/qoder-free")
+        webbrowser.open("https://github.com/VoDaiLocz/Qoder-Free/issues")
     
     def _write_fake_hardware_info(self, qoder_support_dir):
         """Create fake hardware information used by hardware fingerprint reset."""
@@ -2047,39 +2201,9 @@ class QoderResetGUI(QMainWindow):
             except Exception as e:
                 self.log(f"   ⚠️  权限重置失败: {e}")
             
-            # 5. 创建迷惑性文件（干扰检测）
-            self.log("5. 创建迷惑性文件...")
-            try:
-                decoy_files = [
-                    "real_machine_id.tmp", "backup_device_id.log", 
-                    "old_telemetry.dat", "previous_session.cache",
-                    "legacy_fingerprint.json", "archived_identity.bak",
-                    "system_backup.tmp", "device_clone.dat"
-                ]
-                
-                for decoy_file in decoy_files:
-                    file_path = qoder_support_dir / decoy_file
-                    fake_data = {
-                        "fake_id": str(uuid.uuid4()),
-                        "timestamp": (datetime.now() - timedelta(days=random.randint(30, 365))).isoformat(),
-                        "data": hashlib.md5(str(random.random()).encode()).hexdigest(),
-                        "note": "This is a decoy file"
-                    }
-                    
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        json.dump(fake_data, f, indent=2)
-                    
-                    # 设置为隐藏文件
-                    try:
-                        if platform.system() == "Darwin":
-                            subprocess.run(['chflags', 'hidden', str(file_path)], check=False)
-                    except:
-                        pass
-                    
-                    self.log(f"   ✅ 已创建迷惑文件: {decoy_file}")
-                    cleaned_count += 1
-            except Exception as e:
-                self.log(f"   ⚠️  创建迷惑文件失败: {e}")
+            # 5. Do not create decoy files. Keeping cleanup output minimal makes
+            # diagnostics easier and avoids adding new state that users did not ask for.
+            self.log("5. 跳过迷惑文件创建，保持清理结果可验证")
             
             # 6. 安全清理系统级别的缓存（macOS）
             if platform.system() == "Darwin":
