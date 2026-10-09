@@ -4,10 +4,11 @@ Qoder Reset Tool - Modern GUI Version
 Implemented using PyQt5, fully designed according to user prototype
 """
 
-__version__ = "1.3.0"
+__version__ = "1.3.2"
 
 import os
 import sys
+import csv
 import json
 import uuid
 import shutil
@@ -16,6 +17,7 @@ import subprocess
 import webbrowser
 import platform
 import random
+import time
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Callable, Mapping, Optional, Tuple
@@ -63,6 +65,16 @@ def _qoder_platform_value(system: Optional[str] = None) -> str:
     return "darwin"
 
 
+def _windows_qoder_pids(tasklist_output: str) -> list:
+    return [
+        row[1].strip()
+        for row in csv.reader(tasklist_output.splitlines())
+        if len(row) >= 2
+        and row[0].strip().casefold() == "qoder ide.exe"
+        and row[1].strip().isdigit()
+    ]
+
+
 def kill_qoder_process(
     system: Optional[str] = None,
     run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
@@ -75,10 +87,38 @@ def kill_qoder_process(
 
     if system == "Windows":
         result = run(
-            ["taskkill", "/F", "/T", "/IM", "qoder.exe"],
+            ["tasklist", "/FO", "CSV", "/NH"],
             capture_output=True,
             text=True,
         )
+        if result.returncode != 0:
+            details = getattr(result, "stderr", "") or getattr(result, "stdout", "")
+            return False, details.strip()
+
+        qoder_pids = _windows_qoder_pids(getattr(result, "stdout", ""))
+        if not qoder_pids:
+            return True, ""
+
+        kill_results = []
+        for pid in qoder_pids:
+            kill_results.append(
+                run(
+                    ["taskkill", "/F", "/T", "/PID", pid],
+                    capture_output=True,
+                    text=True,
+                )
+            )
+        result = kill_results[-1]
+        details = "\n".join(
+            text.strip()
+            for kill_result in kill_results
+            for text in (
+                getattr(kill_result, "stdout", ""),
+                getattr(kill_result, "stderr", ""),
+            )
+            if text and text.strip()
+        )
+        return all(item.returncode == 0 for item in kill_results), details
     elif system == "Darwin":
         result = run(["pkill", "-x", "Qoder"], capture_output=True, text=True)
     elif system == "Linux":
@@ -177,11 +217,11 @@ def check_is_qoder_running(
     try:
         if system == "Windows":
             result = run(
-                ["tasklist", "/FI", "IMAGENAME eq qoder.exe"],
+                ["tasklist", "/FO", "CSV", "/NH"],
                 capture_output=True,
                 text=True,
             )
-            return "qoder.exe" in getattr(result, "stdout", "").lower()
+            return bool(_windows_qoder_pids(getattr(result, "stdout", "")))
         elif system == "Darwin":
             result = run(["pgrep", "-x", "Qoder"], capture_output=True, text=True)
             return result.returncode == 0
@@ -191,6 +231,391 @@ def check_is_qoder_running(
         return False
     except Exception:
         return False
+
+
+def wait_for_qoder_exit(timeout: float = 5.0, poll_interval: float = 0.25) -> bool:
+    """Wait briefly for Qoder and its file handles to be released."""
+    deadline = time.monotonic() + timeout
+    while check_is_qoder_running():
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        time.sleep(min(poll_interval, remaining))
+    return True
+
+
+def collect_windows_machine_diagnostics(
+    work_dir: Optional[Path] = None,
+    system: Optional[str] = None,
+    run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+) -> str:
+    """Collect the requested Windows hardware, SafeStore, and Qoder CLI details."""
+    system = system or platform.system()
+    if system != "Windows":
+        raise OSError("Windows machine diagnostics are only available on Windows.")
+
+    script = r"""
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$ErrorActionPreference = 'Stop'
+$sections = New-Object 'System.Collections.Generic.List[string]'
+
+$sections.Add('=== C: FILESYSTEM VOLUME ===')
+try {
+    $volume = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
+    if ($null -eq $volume) { throw 'C: volume was not found.' }
+    $sections.Add("Drive: $($volume.DeviceID)`nVolumeSerial: $($volume.VolumeSerialNumber)`nFileSystem: $($volume.FileSystem)")
+} catch {
+    $sections.Add("ERROR: $($_.Exception.Message)")
+}
+
+$sections.Add('')
+$sections.Add('=== MAC ADDRESSES ===')
+try {
+    $adapters = Get-NetAdapter |
+        Select-Object ifIndex, Name, Status, HardwareInterface, MacAddress, InterfaceDescription |
+        Sort-Object ifIndex |
+        Format-Table -AutoSize |
+        Out-String -Width 200
+    $sections.Add($adapters.TrimEnd())
+} catch {
+    $sections.Add("ERROR: $($_.Exception.Message)")
+}
+
+$sections.Add('')
+$sections.Add('=== SAFESTORE FILES ===')
+try {
+    $safeStoreDir = 'C:\Users\Public\Documents\Alibaba\SafeStore'
+    if (Test-Path -LiteralPath $safeStoreDir) {
+        $files = Get-ChildItem -LiteralPath $safeStoreDir -Force |
+            Select-Object FullName, Length, CreationTimeUtc, LastWriteTimeUtc |
+            Format-Table -AutoSize |
+            Out-String -Width 200
+        $sections.Add($files.TrimEnd())
+    } else {
+        $sections.Add('SafeStore directory does not exist.')
+    }
+} catch {
+    $sections.Add("ERROR: $($_.Exception.Message)")
+}
+
+$sections.Add('')
+$sections.Add('=== WINDOWS INSTALL TIME ===')
+try {
+    $registryPath = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+    $installTime = (Get-ItemProperty -Path $registryPath -Name InstallTime).InstallTime
+    $fileTime = [Int64]$installTime
+    $sections.Add("RegistryPath: HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion`nValueName: InstallTime`nRawFILETIME: $installTime`nHexFILETIME: $('0x{0:X16}' -f $fileTime)`nInstallTimeUtc: $([DateTime]::FromFileTimeUtc($fileTime).ToString('o'))")
+} catch {
+    $sections.Add("ERROR: $($_.Exception.Message)")
+}
+
+$sections.Add('')
+$sections.Add('=== QODER MACHINE INFO ===')
+try {
+    $qoderExe = 'C:\Program Files\Qoder IDE\resources\app\resources\bin\x86_64_windows\Qoder.exe'
+    if (Test-Path -LiteralPath $qoderExe) {
+        $workDir = (Get-Location).Path
+        $sections.Add("WorkDir: $workDir")
+        $machineInfo = (& $qoderExe machine-info --workDir $workDir 2>&1 | Out-String).TrimEnd()
+        $machineInfoExitCode = $LASTEXITCODE
+        if ($machineInfo) { $sections.Add($machineInfo) } else { $sections.Add('Qoder returned no output.') }
+        if ($null -ne $machineInfoExitCode -and $machineInfoExitCode -ne 0) {
+            $sections.Add("Qoder exit code: $machineInfoExitCode")
+        }
+    } else {
+        $sections.Add("Qoder executable not found: $qoderExe")
+    }
+} catch {
+    $sections.Add("ERROR: $($_.Exception.Message)")
+}
+
+Write-Output ($sections -join [Environment]::NewLine)
+"""
+    result = run(
+        [
+            "powershell.exe",
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            script,
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        cwd=str(work_dir or Path.cwd()),
+        timeout=60,
+    )
+    if result.returncode != 0:
+        details = (result.stderr or result.stdout or "").strip()
+        raise RuntimeError(
+            f"PowerShell diagnostics failed with exit code {result.returncode}"
+            + (f": {details}" if details else ".")
+        )
+    report = result.stdout.strip()
+    if not report:
+        raise RuntimeError("PowerShell diagnostics returned no output.")
+    return report
+
+
+def randomize_windows_install_time_and_clear_safestore(
+    system: Optional[str] = None,
+    run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+) -> str:
+    """Set a random valid Windows InstallTime and remove SafeStore contents."""
+    system = system or platform.system()
+    if system != "Windows":
+        raise OSError("This operation is only available on Windows.")
+
+    script = r"""
+$ErrorActionPreference = 'Stop'
+$safeStoreDir = 'C:\Users\Public\Documents\Alibaba\SafeStore'
+$registrySubKey = 'SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+$principal = [Security.Principal.WindowsPrincipal]::new(
+    [Security.Principal.WindowsIdentity]::GetCurrent()
+)
+if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    throw 'Administrator privileges are required. Restart Qoder-Free as Administrator.'
+}
+
+$registryKey = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($registrySubKey, $true)
+if ($null -eq $registryKey) {
+    throw 'Could not open the Windows CurrentVersion registry key for writing.'
+}
+try {
+    $oldInstallTime = $registryKey.GetValue('InstallTime', $null)
+    if ($null -eq $oldInstallTime) {
+        throw 'The InstallTime registry value does not exist.'
+    }
+
+    $startFileTime = [DateTime]::new(2000, 1, 1, 0, 0, 0, [DateTimeKind]::Utc).ToFileTimeUtc()
+    $endFileTime = [DateTime]::UtcNow.ToFileTimeUtc()
+    $randomBytes = New-Object byte[] 8
+    $randomGenerator = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $randomGenerator.GetBytes($randomBytes)
+    } finally {
+        $randomGenerator.Dispose()
+    }
+    $range = [UInt64]($endFileTime - $startFileTime)
+    $offset = [BitConverter]::ToUInt64($randomBytes, 0) % $range
+    $newInstallTime = [Int64]([UInt64]$startFileTime + $offset)
+    $registryKey.SetValue(
+        'InstallTime',
+        $newInstallTime,
+        [Microsoft.Win32.RegistryValueKind]::QWord
+    )
+    $registryKey.Flush()
+} finally {
+    $registryKey.Dispose()
+}
+
+$removedFiles = 0
+if (Test-Path -LiteralPath $safeStoreDir -PathType Container) {
+    $removedFiles = @(Get-ChildItem -LiteralPath $safeStoreDir -File -Recurse -Force).Count
+    $entries = @(Get-ChildItem -LiteralPath $safeStoreDir -Force)
+    foreach ($entry in $entries) {
+        Remove-Item -LiteralPath $entry.FullName -Recurse -Force
+    }
+}
+
+[PSCustomObject]@{
+    PreviousInstallTimeHex = ('0x{0:X16}' -f [Int64]$oldInstallTime)
+    NewInstallTimeHex = ('0x{0:X16}' -f $newInstallTime)
+    NewInstallTimeUtc = [DateTime]::FromFileTimeUtc($newInstallTime).ToString('o')
+    SafeStoreFilesDeleted = $removedFiles
+    SafeStoreDirectoryExists = (Test-Path -LiteralPath $safeStoreDir -PathType Container)
+} | ConvertTo-Json -Compress
+"""
+    result = run(
+        [
+            "powershell.exe",
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            script,
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=60,
+    )
+    if result.returncode != 0:
+        details = (result.stderr or result.stdout or "").strip()
+        raise RuntimeError(
+            f"Windows InstallTime/SafeStore operation failed with exit code {result.returncode}"
+            + (f": {details}" if details else ".")
+        )
+    report = result.stdout.strip()
+    if not report:
+        raise RuntimeError("Windows InstallTime/SafeStore operation returned no output.")
+    return report
+
+
+def randomize_windows_physical_adapter_macs(
+    system: Optional[str] = None,
+    run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+) -> str:
+    """Assign random locally administered MAC addresses to eligible physical adapters."""
+    system = system or platform.system()
+    if system != "Windows":
+        raise OSError("Changing network adapter MAC addresses is only available on Windows.")
+
+    script = r"""
+$ErrorActionPreference = 'Stop'
+$principal = [Security.Principal.WindowsPrincipal]::new(
+    [Security.Principal.WindowsIdentity]::GetCurrent()
+)
+if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    throw 'Administrator privileges are required. Restart Qoder-Free as Administrator.'
+}
+
+$adapters = @(Get-NetAdapter -Physical -ErrorAction Stop |
+    Where-Object { $_.HardwareInterface -and $_.MacAddress })
+if ($adapters.Count -eq 0) {
+    throw 'No eligible physical network adapters were found.'
+}
+
+$randomGenerator = [Security.Cryptography.RandomNumberGenerator]::Create()
+try {
+    $results = foreach ($adapter in $adapters) {
+        $randomBytes = New-Object byte[] 6
+        $randomGenerator.GetBytes($randomBytes)
+        $randomBytes[0] = ($randomBytes[0] -band 0xFE) -bor 0x02
+        $newMacAddress = ($randomBytes | ForEach-Object { $_.ToString('X2') }) -join '-'
+        try {
+            Set-NetAdapter -Name $adapter.Name -MacAddress $newMacAddress -Confirm:$false -ErrorAction Stop
+            [PSCustomObject]@{
+                Adapter = $adapter.Name
+                PreviousMac = $adapter.MacAddress
+                NewMac = $newMacAddress
+                Success = $true
+                Error = ''
+            }
+        } catch {
+            [PSCustomObject]@{
+                Adapter = $adapter.Name
+                PreviousMac = $adapter.MacAddress
+                NewMac = $newMacAddress
+                Success = $false
+                Error = $_.Exception.Message
+            }
+        }
+    }
+} finally {
+    $randomGenerator.Dispose()
+}
+
+ConvertTo-Json -InputObject @($results) -Compress -Depth 3
+"""
+    result = run(
+        [
+            "powershell.exe",
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            script,
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=60,
+    )
+    if result.returncode != 0:
+        details = (result.stderr or result.stdout or "").strip()
+        raise RuntimeError(
+            f"Windows MAC address operation failed with exit code {result.returncode}"
+            + (f": {details}" if details else ".")
+        )
+    try:
+        results = json.loads(result.stdout)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise RuntimeError("Windows MAC address operation returned invalid output.") from exc
+    if not isinstance(results, list) or not results:
+        raise RuntimeError("No eligible physical network adapters were found.")
+
+    report_lines = []
+    succeeded = 0
+    for item in results:
+        if not isinstance(item, dict) or not item.get("Adapter"):
+            raise RuntimeError("Windows MAC address operation returned an invalid adapter result.")
+        if item.get("Success") is True:
+            succeeded += 1
+            report_lines.append(
+                f"{item['Adapter']}: {item.get('PreviousMac', 'unknown')} -> {item.get('NewMac', 'unknown')}"
+            )
+        else:
+            report_lines.append(
+                f"{item['Adapter']}: failed: {item.get('Error') or 'driver rejected the MAC address'}"
+            )
+    if succeeded == 0:
+        raise RuntimeError("No MAC addresses were changed.\n" + "\n".join(report_lines))
+    if succeeded < len(results):
+        report_lines.insert(0, f"Partial success: {succeeded} of {len(results)} adapters changed.")
+    return "\n".join(report_lines)
+
+
+def randomize_windows_c_volume_serial(
+    executable: Optional[Path] = None,
+    system: Optional[str] = None,
+    run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+) -> str:
+    """Change the C: volume serial using an installed Microsoft Sysinternals VolumeID."""
+    system = system or platform.system()
+    if system != "Windows":
+        raise OSError("Changing the C: volume serial is only available on Windows.")
+
+    executable_names = ("VolumeID64.exe", "Volumeid.exe", "volumeid.exe")
+    candidates = []
+    if executable is not None:
+        candidates.append(Path(executable))
+    else:
+        for name in executable_names:
+            found = shutil.which(name)
+            if found:
+                candidates.append(Path(found))
+        for directory in (Path(__file__).resolve().parent, Path(sys.executable).resolve().parent):
+            candidates.extend(directory / name for name in executable_names)
+
+    volume_id_executable = next((path for path in candidates if path.is_file()), None)
+    if volume_id_executable is None:
+        raise FileNotFoundError(
+            "Sysinternals VolumeID was not found. Download the official VolumeID utility "
+            "from https://learn.microsoft.com/sysinternals/downloads/volumeid, then place "
+            "Volumeid.exe or VolumeID64.exe beside Qoder-Free or add it to PATH."
+        )
+
+    serial = uuid.uuid4().hex[:8].upper()
+    formatted_serial = f"{serial[:4]}-{serial[4:]}"
+    result = run(
+        [str(volume_id_executable), "C:", formatted_serial],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdin=subprocess.DEVNULL,
+        timeout=30,
+    )
+    output = "\n".join(
+        text.strip()
+        for text in (result.stdout, result.stderr)
+        if text and text.strip()
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"VolumeID failed with exit code {result.returncode}"
+            + (f":\n{output}" if output else ". Run Qoder-Free as Administrator.")
+        )
+    return (
+        f"Requested C: volume serial: {formatted_serial}\n"
+        "Restart Windows for the new serial to take effect on NTFS."
+        + (f"\n\nVolumeID output:\n{output}" if output else "")
+    )
 
 
 def backup_qoder_identity(
@@ -489,6 +914,18 @@ class QoderResetGUI(QMainWindow):
                 "github": "Github",
                 "language": "语言",
                 "diagnostic_report": "复制诊断报告",
+                "windows_machine_diagnostics": "Windows 设备信息",
+                "machine_diagnostics_title": "Windows 设备诊断",
+                "machine_diagnostics_privacy": "结果可能包含硬件标识符和机器令牌；分享前请先检查。",
+                "randomize_install_time_safestore": "重置安装时间和 SafeStore",
+                "confirm_install_time_safestore": "此操作会更改 Windows 安装时间，并永久删除 SafeStore 中的所有内容。需要管理员权限。是否继续？",
+                "install_time_safestore_title": "确认 Windows 系统更改",
+                "randomize_adapter_macs": "随机更改所有网卡 MAC",
+                "confirm_adapter_macs": "此操作会为所有符合条件的物理网卡设置随机 MAC 地址。网卡可能会短暂断开连接，部分驱动可能不支持。需要管理员权限。是否继续？",
+                "adapter_macs_title": "确认 MAC 地址更改",
+                "randomize_volume_serial": "更改 C: 卷序列号",
+                "confirm_volume_serial": "此操作会使用 Microsoft Sysinternals VolumeID 随机更改 C: 卷序列号。需要管理员权限，NTFS 卷需要重启后生效。请先关闭使用该卷的应用。是否继续？",
+                "volume_serial_title": "确认卷序列号更改",
                 "issue_note": "注意: 本工具仅重置本地 Qoder 数据，服务端额度由 Qoder 控制。",
                 # 日志消息
                 "tool_started": "Qoder-Free 重置工具已启动",
@@ -544,6 +981,18 @@ class QoderResetGUI(QMainWindow):
                 "github": "Github",
                 "language": "Language",
                 "diagnostic_report": "Copy Diagnostic Report",
+                "windows_machine_diagnostics": "Windows Device Details",
+                "machine_diagnostics_title": "Windows Machine Diagnostics",
+                "machine_diagnostics_privacy": "Results may include hardware identifiers and a machine token. Review them before sharing.",
+                "randomize_install_time_safestore": "Randomize InstallTime & Clear SafeStore",
+                "confirm_install_time_safestore": "This changes Windows InstallTime and permanently deletes all SafeStore contents. Administrator access is required. Continue?",
+                "install_time_safestore_title": "Confirm Windows System Changes",
+                "randomize_adapter_macs": "Randomize All Adapter MACs",
+                "confirm_adapter_macs": "This assigns a random MAC address to every eligible physical network adapter. Adapters may disconnect briefly, and some drivers may not support this. Administrator access is required. Continue?",
+                "adapter_macs_title": "Confirm MAC Address Changes",
+                "randomize_volume_serial": "Change C: Volume Serial",
+                "confirm_volume_serial": "This uses Microsoft Sysinternals VolumeID to randomize the C: volume serial. Administrator access is required, and NTFS changes take effect after a restart. Close applications using this volume first. Continue?",
+                "volume_serial_title": "Confirm Volume Serial Change",
                 "issue_note": "Note: this tool can reset local Qoder data, but server-side trial credits and model access are controlled by Qoder.",
                 # Log messages
                 "tool_started": "Qoder-Free reset tool started",
@@ -603,6 +1052,18 @@ class QoderResetGUI(QMainWindow):
                 "github": "Github",
                 "language": "Язык",
                 "diagnostic_report": "Копировать отчет",
+                "windows_machine_diagnostics": "Данные устройства Windows",
+                "machine_diagnostics_title": "Диагностика Windows",
+                "machine_diagnostics_privacy": "Результаты могут содержать идентификаторы оборудования и токен машины. Проверьте их перед отправкой.",
+                "randomize_install_time_safestore": "Изменить время установки и очистить SafeStore",
+                "confirm_install_time_safestore": "Будет изменено время установки Windows и безвозвратно удалено содержимое SafeStore. Требуются права администратора. Продолжить?",
+                "install_time_safestore_title": "Подтверждение изменений Windows",
+                "randomize_adapter_macs": "Изменить MAC всех адаптеров",
+                "confirm_adapter_macs": "Для всех подходящих физических сетевых адаптеров будут заданы случайные MAC-адреса. Возможны кратковременные отключения; некоторые драйверы могут не поддерживать эту функцию. Требуются права администратора. Продолжить?",
+                "adapter_macs_title": "Подтверждение изменения MAC-адресов",
+                "randomize_volume_serial": "Изменить серийный номер диска C:",
+                "confirm_volume_serial": "С помощью Microsoft Sysinternals VolumeID будет изменен серийный номер диска C:. Требуются права администратора; для NTFS изменения вступят в силу после перезагрузки. Сначала закройте приложения, использующие этот диск. Продолжить?",
+                "volume_serial_title": "Подтверждение изменения серийного номера диска",
                 "issue_note": "Примечание: инструмент сбрасывает локальные данные Qoder; баланс триала контролируется сервером.",
                 # Сообщения журнала
                 "tool_started": "Инструмент сброса Qoder-Free запущен",
@@ -658,6 +1119,18 @@ class QoderResetGUI(QMainWindow):
                 "github": "Github",
                 "language": "Idioma",
                 "diagnostic_report": "Copiar Relatório",
+                "windows_machine_diagnostics": "Dados do dispositivo Windows",
+                "machine_diagnostics_title": "Diagnóstico do Windows",
+                "machine_diagnostics_privacy": "Os resultados podem conter identificadores de hardware e um token da máquina. Revise antes de compartilhar.",
+                "randomize_install_time_safestore": "Alterar InstallTime e limpar SafeStore",
+                "confirm_install_time_safestore": "Isso altera o InstallTime do Windows e exclui permanentemente o conteúdo do SafeStore. É necessário acesso de administrador. Continuar?",
+                "install_time_safestore_title": "Confirmar alterações do Windows",
+                "randomize_adapter_macs": "Alterar MAC de todos os adaptadores",
+                "confirm_adapter_macs": "Um endereço MAC aleatório será definido para cada adaptador físico elegível. Os adaptadores podem desconectar brevemente e alguns drivers podem não oferecer suporte. É necessário acesso de administrador. Continuar?",
+                "adapter_macs_title": "Confirmar alteração dos endereços MAC",
+                "randomize_volume_serial": "Alterar serial do volume C:",
+                "confirm_volume_serial": "Isso usa o Microsoft Sysinternals VolumeID para alterar aleatoriamente o serial do volume C:. É necessário acesso de administrador; alterações em NTFS só entram em vigor após reiniciar. Feche primeiro os aplicativos que usam este volume. Continuar?",
+                "volume_serial_title": "Confirmar alteração do serial do volume",
                 "issue_note": "Nota: esta ferramenta redefine dados locais do Qoder; o crédito de avaliação é controlado pelo servidor.",
                 # Mensagens de log
                 "tool_started": "Ferramenta de redefinição Qoder-Free iniciada",
@@ -713,6 +1186,18 @@ class QoderResetGUI(QMainWindow):
                 "github": "Liên Kết GitHub",
                 "language": "Ngôn Ngữ",
                 "diagnostic_report": "Sao Chép Báo Cáo Chẩn Đoán",
+                "windows_machine_diagnostics": "Thông Tin Thiết Bị Windows",
+                "machine_diagnostics_title": "Chẩn Đoán Máy Windows",
+                "machine_diagnostics_privacy": "Kết quả có thể chứa mã nhận dạng phần cứng và mã thông báo máy. Hãy kiểm tra trước khi chia sẻ.",
+                "randomize_install_time_safestore": "Đổi InstallTime và xóa SafeStore",
+                "confirm_install_time_safestore": "Thao tác này thay đổi InstallTime của Windows và xóa vĩnh viễn nội dung SafeStore. Cần quyền quản trị viên. Tiếp tục?",
+                "install_time_safestore_title": "Xác nhận thay đổi Windows",
+                "randomize_adapter_macs": "Đổi MAC tất cả bộ điều hợp",
+                "confirm_adapter_macs": "Thao tác này đặt địa chỉ MAC ngẫu nhiên cho mọi bộ điều hợp mạng vật lý đủ điều kiện. Kết nối có thể gián đoạn trong thời gian ngắn và một số trình điều khiển có thể không hỗ trợ. Cần quyền quản trị viên. Tiếp tục?",
+                "adapter_macs_title": "Xác nhận thay đổi địa chỉ MAC",
+                "randomize_volume_serial": "Đổi số sê-ri ổ C:",
+                "confirm_volume_serial": "Thao tác này dùng Microsoft Sysinternals VolumeID để đổi ngẫu nhiên số sê-ri ổ C:. Cần quyền quản trị viên; thay đổi trên NTFS có hiệu lực sau khi khởi động lại. Hãy đóng ứng dụng đang dùng ổ đĩa này trước. Tiếp tục?",
+                "volume_serial_title": "Xác nhận đổi số sê-ri ổ đĩa",
                 "issue_note": "Lưu ý: công cụ chỉ đặt lại dữ liệu Qoder cục bộ; trial credit và quyền dùng model có thể do máy chủ Qoder quyết định.",
                 # Các thông báo nhật ký
                 "tool_started": "Công cụ đặt lại Qoder-Free đã được khởi động",
@@ -766,7 +1251,7 @@ class QoderResetGUI(QMainWindow):
         # Set window properties
         self.setWindowTitle(self.tr("window_title"))
         self.setMinimumSize(860, 680)
-        self.resize(940, 740)
+        self.resize(940, 870)
 
         # Set application-wide font
         font = QFont("Segoe UI", 10)
@@ -880,6 +1365,37 @@ class QoderResetGUI(QMainWindow):
             self.tr("diagnostic_report"), "#334155", self.copy_diagnostic_report
         )
         button_layout.addWidget(self.diagnostic_btn, 3, 0)
+
+        self.machine_diagnostics_btn = self.create_styled_button(
+            self.tr("windows_machine_diagnostics"),
+            "#475569",
+            self.show_windows_machine_diagnostics,
+        )
+        button_layout.addWidget(self.machine_diagnostics_btn, 4, 0)
+
+        self.install_time_safestore_btn = self.create_styled_button(
+            self.tr("randomize_install_time_safestore"),
+            "#b45309",
+            self.randomize_install_time_and_clear_safestore,
+        )
+        self.install_time_safestore_btn.setEnabled(platform.system() == "Windows")
+        button_layout.addWidget(self.install_time_safestore_btn, 4, 1)
+
+        self.adapter_macs_btn = self.create_styled_button(
+            self.tr("randomize_adapter_macs"),
+            "#be123c",
+            self.randomize_network_adapter_macs,
+        )
+        self.adapter_macs_btn.setEnabled(platform.system() == "Windows")
+        button_layout.addWidget(self.adapter_macs_btn, 4, 2)
+
+        self.volume_serial_btn = self.create_styled_button(
+            self.tr("randomize_volume_serial"),
+            "#7c2d12",
+            self.randomize_c_volume_serial,
+        )
+        self.volume_serial_btn.setEnabled(platform.system() == "Windows")
+        button_layout.addWidget(self.volume_serial_btn, 5, 0)
 
         self.github_btn = self.create_styled_button(
             self.tr("github"), "#0f766e", self.open_github
@@ -1060,6 +1576,10 @@ class QoderResetGUI(QMainWindow):
                 "restore_btn": "restore_identity",
                 "check_update_btn": "check_update",
                 "diagnostic_btn": "diagnostic_report",
+                "machine_diagnostics_btn": "windows_machine_diagnostics",
+                "install_time_safestore_btn": "randomize_install_time_safestore",
+                "adapter_macs_btn": "randomize_adapter_macs",
+                "volume_serial_btn": "randomize_volume_serial",
                 "clear_log_btn": "clear_log",
                 "github_btn": "github",
             }
@@ -1111,6 +1631,12 @@ class QoderResetGUI(QMainWindow):
         self.restore_btn.setText(self.tr("restore_identity"))
         self.check_update_btn.setText(self.tr("check_update"))
         self.diagnostic_btn.setText(self.tr("diagnostic_report"))
+        self.machine_diagnostics_btn.setText(self.tr("windows_machine_diagnostics"))
+        self.install_time_safestore_btn.setText(
+            self.tr("randomize_install_time_safestore")
+        )
+        self.adapter_macs_btn.setText(self.tr("randomize_adapter_macs"))
+        self.volume_serial_btn.setText(self.tr("randomize_volume_serial"))
         self.clear_log_btn.setText(self.tr("clear_log"))
         self.github_btn.setText(self.tr("github"))
 
@@ -1119,11 +1645,23 @@ class QoderResetGUI(QMainWindow):
 
         # 清空日志并重新初始化
         self.log_text.clear()
-        self.log(self.tr("tool_started"))
+        self.log("Qoder-Free reset tool started")
         self.log("=" * 50)
 
     def log(self, message):
         """Log messages with timestamp in English"""
+        if getattr(self, "_reset_cleanup_failures", None) is not None:
+            message_text = str(message)
+            if any(
+                marker in message_text.lower()
+                for marker in (
+                    "cleanup failed",
+                    "failed to clear",
+                    "failed to clean",
+                    "failed to remove",
+                )
+            ):
+                self._reset_cleanup_failures.append(message_text)
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_message = f"[{timestamp}] {message}"
         self.log_text.append(log_message)
@@ -1221,7 +1759,7 @@ class QoderResetGUI(QMainWindow):
     def clear_log(self):
         """Clear log contents"""
         self.log_text.clear()
-        self.log(self.tr("log_cleared"))
+        self.log("Log cleared")
 
     def collect_diagnostic_report(self):
         """Collect non-secret state useful for GitHub issue reports."""
@@ -1294,6 +1832,122 @@ class QoderResetGUI(QMainWindow):
                 f"Failed to collect diagnostic report: {e}",
             )
 
+    def show_windows_machine_diagnostics(self):
+        """Collect and display Windows machine details in a read-only dialog."""
+        try:
+            report = collect_windows_machine_diagnostics()
+            dialog = QDialog(self)
+            dialog.setWindowTitle(self.tr("machine_diagnostics_title"))
+            dialog.resize(760, 600)
+
+            layout = QVBoxLayout(dialog)
+            privacy_note = QLabel(self.tr("machine_diagnostics_privacy"))
+            privacy_note.setWordWrap(True)
+            layout.addWidget(privacy_note)
+
+            report_view = QTextEdit()
+            report_view.setReadOnly(True)
+            report_view.setPlainText(report)
+            layout.addWidget(report_view)
+
+            buttons = QDialogButtonBox(QDialogButtonBox.Close)
+            buttons.rejected.connect(dialog.reject)
+            layout.addWidget(buttons)
+
+            self.log("Windows machine diagnostics collected.")
+            dialog.exec_()
+        except Exception as exc:
+            self.log(f"Error collecting Windows machine diagnostics: {exc}")
+            QMessageBox.critical(
+                self,
+                self.tr("error"),
+                f"Failed to collect Windows machine diagnostics: {exc}",
+            )
+
+    def randomize_install_time_and_clear_safestore(self):
+        """Confirm and apply Windows InstallTime and SafeStore changes."""
+        reply = QMessageBox.warning(
+            self,
+            self.tr("install_time_safestore_title"),
+            self.tr("confirm_install_time_safestore"),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            report = randomize_windows_install_time_and_clear_safestore()
+            self.log(f"Windows InstallTime/SafeStore operation completed: {report}")
+            QMessageBox.information(
+                self,
+                self.tr("success"),
+                f"Windows InstallTime/SafeStore operation completed:\n{report}",
+            )
+        except Exception as exc:
+            self.log(f"Error changing Windows InstallTime/SafeStore: {exc}")
+            QMessageBox.critical(
+                self,
+                self.tr("error"),
+                f"Failed to change Windows InstallTime/SafeStore: {exc}",
+            )
+
+    def randomize_network_adapter_macs(self):
+        """Confirm and randomize MAC addresses for eligible physical adapters."""
+        reply = QMessageBox.warning(
+            self,
+            self.tr("adapter_macs_title"),
+            self.tr("confirm_adapter_macs"),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            report = randomize_windows_physical_adapter_macs()
+            self.log(f"Windows network adapter MAC operation completed:\n{report}")
+            message = f"Network adapter MAC operation completed:\n{report}"
+            if report.startswith("Partial success:"):
+                QMessageBox.warning(self, self.tr("warning"), message)
+            else:
+                QMessageBox.information(self, self.tr("success"), message)
+        except Exception as exc:
+            self.log(f"Error changing network adapter MAC addresses: {exc}")
+            QMessageBox.critical(
+                self,
+                self.tr("error"),
+                f"Failed to change network adapter MAC addresses: {exc}",
+            )
+
+    def randomize_c_volume_serial(self):
+        """Confirm and change the Windows C: volume serial using Sysinternals."""
+        reply = QMessageBox.warning(
+            self,
+            self.tr("volume_serial_title"),
+            self.tr("confirm_volume_serial"),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            report = randomize_windows_c_volume_serial()
+            self.log(f"C: volume serial change completed:\n{report}")
+            QMessageBox.information(
+                self,
+                self.tr("success"),
+                report,
+            )
+        except Exception as exc:
+            self.log(f"Error changing C: volume serial: {exc}")
+            QMessageBox.critical(
+                self,
+                self.tr("error"),
+                f"Failed to change C: volume serial: {exc}",
+            )
+
     def get_qoder_data_dir(self):
         """Get Qoder data directory path (cross-platform support)"""
         return resolve_qoder_data_dir()
@@ -1323,7 +1977,7 @@ class QoderResetGUI(QMainWindow):
                 return
 
             backup_path = backup_qoder_identity(qoder_dir)
-            self.log(f"✅ {self.tr('backup_success')} {backup_path.name}")
+            self.log(f"Identity data successfully backed up to: {backup_path.name}")
             QMessageBox.information(
                 self,
                 self.tr("success"),
@@ -1518,10 +2172,10 @@ class QoderResetGUI(QMainWindow):
             if file_path.exists():
                 try:
                     file_path.unlink()
-                    self.log(f"   已清除登录文件: {login_file}")
+                    self.log(f"   Removed login file: {login_file}")
                     cleaned_count += 1
                 except Exception as e:
-                    self.log(f"   清除登录文件失败 {login_file}: {e}")
+                    self.log(f"   Failed to remove login file {login_file}: {e}")
 
         login_dirs = [
             "Session Storage",
@@ -1533,10 +2187,10 @@ class QoderResetGUI(QMainWindow):
             if dir_path.exists():
                 try:
                     shutil.rmtree(dir_path)
-                    self.log(f"   已清除登录目录: {login_dir}")
+                    self.log(f"   Removed login directory: {login_dir}")
                     cleaned_count += 1
                 except Exception as e:
-                    self.log(f"   清除登录目录失败 {login_dir}: {e}")
+                    self.log(f"   Failed to remove login directory {login_dir}: {e}")
 
         storage_json_file = (
             qoder_support_dir / "User" / "globalStorage" / "storage.json"
@@ -1565,7 +2219,7 @@ class QoderResetGUI(QMainWindow):
                 ]
                 for key in removed_keys:
                     data.pop(key, None)
-                    self.log(f"   已清除登录配置: {key}")
+                    self.log(f"   Removed login setting: {key}")
 
                 if removed_keys:
                     storage_json_file.write_text(
@@ -1574,9 +2228,9 @@ class QoderResetGUI(QMainWindow):
                     )
                     cleaned_count += len(removed_keys)
             except Exception as e:
-                self.log(f"   清理登录配置失败: {e}")
+                self.log(f"   Failed to clean login settings: {e}")
 
-        self.log(f"   登录身份清理完成，处理了 {cleaned_count} 个项目")
+        self.log(f"   Login identity cleanup finished; processed {cleaned_count} item(s)")
 
     def reset_telemetry(self):
         """Reset telemetry data"""
@@ -1757,7 +2411,7 @@ class QoderResetGUI(QMainWindow):
             )
 
     def one_click_reset(self):
-        """一键修改所有配置"""
+        """Run the one-click reset."""
         try:
             # If Qoder is running, offer to close it automatically so we can patch its data.
             if self.is_qoder_running():
@@ -1776,13 +2430,20 @@ class QoderResetGUI(QMainWindow):
                 ok, details = kill_qoder_process()
                 if details:
                     self.log(details)
-                if not ok and self.is_qoder_running():
+                if not wait_for_qoder_exit():
+                    self.log("Qoder is still running; retrying process termination...")
+                    ok, details = kill_qoder_process()
+                    if details:
+                        self.log(details)
+                if not wait_for_qoder_exit():
                     QMessageBox.warning(
                         self,
                         self.tr("warning"),
-                        "Failed to close Qoder. Please close it manually and retry.",
+                        "Qoder is still running and may be holding files open. Close all Qoder windows and helper processes, then retry.",
                     )
                     return
+                if not ok:
+                    self.log("Qoder process was not detected after the termination attempt.")
 
             # 确认操作
             reply = QMessageBox.question(
@@ -1815,12 +2476,14 @@ class QoderResetGUI(QMainWindow):
         qoder_support_dir = self.get_qoder_data_dir()
 
         if not qoder_support_dir.exists():
-            raise Exception("未找到 Qoder 应用数据目录")
+            raise FileNotFoundError("Qoder application data directory was not found")
 
-        # 1. 重置机器ID（增强版）
-        self.log("1. 重置机器ID...")
+        self._reset_cleanup_failures = []
+
+        # 1. Reset machine identifiers.
+        self.log("1. Resetting machine ID...")
         reset_qoder_machine_id(qoder_support_dir)
-        self.log("   主机器ID已重置")
+        self.log("   Primary machine ID reset")
 
         # 增强：创建多个可能的机器ID文件
         additional_id_files = [
@@ -1835,10 +2498,10 @@ class QoderResetGUI(QMainWindow):
             new_id = str(uuid.uuid4())
             with open(file_path, "w") as f:
                 f.write(new_id)
-            self.log(f"   已创建: {id_file}")
+            self.log(f"   Created identifier file: {id_file}")
 
-        # 2. 重置遥测数据
-        self.log("2. 重置遥测数据...")
+        # 2. Reset telemetry data.
+        self.log("2. Resetting telemetry data...")
         updated = reset_qoder_telemetry(qoder_support_dir)
         storage_json_file = qoder_support_dir / "User/globalStorage/storage.json"
         with open(storage_json_file, "r", encoding="utf-8") as f:
@@ -1879,19 +2542,19 @@ class QoderResetGUI(QMainWindow):
 
             for key in identity_keys_to_remove:
                 data.pop(key, None)
-                self.log(f"   已清除配置: {key}")
+                self.log(f"   Removed configuration key: {key}")
         else:
-            self.log("   保留对话模式：保留非身份相关配置")
+            self.log("   Preserve-chat mode: keeping non-identity settings")
 
         with open(storage_json_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
-        self.log(f"   新遥测机器ID: {updated['telemetry.machineId'][:16]}...")
-        self.log(f"   新设备ID: {updated['telemetry.devDeviceId']}")
-        self.log(f"   新SQM ID: {updated['telemetry.sqmId']}")
+        self.log(f"   New telemetry machine ID: {updated['telemetry.machineId'][:16]}...")
+        self.log(f"   New device ID: {updated['telemetry.devDeviceId']}")
+        self.log(f"   New SQM ID: {updated['telemetry.sqmId']}")
 
-        # 3. 清理缓存（增强版）
-        self.log("3. 清理缓存数据...")
+        # 3. Clean cache data.
+        self.log("3. Cleaning cache data...")
         cache_dirs = [
             "Cache",
             "blob_storage",
@@ -1922,10 +2585,10 @@ class QoderResetGUI(QMainWindow):
                 except:
                     pass
 
-        self.log(f"   已清理 {cleaned} 个缓存目录")
+        self.log(f"   Removed {cleaned} cache director(ies)")
 
-        # 4. 清理身份识别文件（增强版）
-        self.log("4. 清理身份识别文件...")
+        # 4. Clean identity-related files.
+        self.log("4. Cleaning identity-related files...")
         identity_files = [
             "Network Persistent State",  # 网络服务器连接历史和指纹
             "TransportSecurity",  # HSTS等安全策略记录
@@ -1978,10 +2641,10 @@ class QoderResetGUI(QMainWindow):
             if file_path.exists():
                 try:
                     file_path.unlink()
-                    self.log(f"   已清除: {identity_file}")
+                    self.log(f"   Removed: {identity_file}")
                     identity_cleaned += 1
                 except Exception as e:
-                    self.log(f"   清除失败 {identity_file}: {e}")
+                    self.log(f"   Failed to remove {identity_file}: {e}")
 
         # 5. 清理存储目录
         storage_dirs = [
@@ -2006,7 +2669,7 @@ class QoderResetGUI(QMainWindow):
                     "Shared Dictionary",  # 共享字典
                 ]
             )
-            self.log("   不保留对话模式：清理所有存储目录")
+            self.log("   Chat history is not being preserved; cleaning all storage directories")
         else:
             # 如果保留对话记录，保留可能包含对话索引的存储
             # 但仍需清理可能包含身份信息的存储
@@ -2017,48 +2680,59 @@ class QoderResetGUI(QMainWindow):
                     "Shared Dictionary",  # 共享字典
                 ]
             )
-            self.log("   保留对话模式：保留 Local Storage（可能包含对话索引）")
+            self.log("   Preserve-chat mode: keeping Local Storage, which may contain chat indexes")
 
         for storage_dir in storage_dirs:
             storage_path = qoder_support_dir / storage_dir
             if storage_path.exists():
                 try:
                     shutil.rmtree(storage_path)
-                    self.log(f"   已清除: {storage_dir}")
+                    self.log(f"   Removed: {storage_dir}")
                     identity_cleaned += 1
                 except Exception as e:
-                    self.log(f"   清除失败 {storage_dir}: {e}")
+                    self.log(f"   Failed to remove {storage_dir}: {e}")
 
-        self.log(f"   已清理 {identity_cleaned} 个身份识别文件/目录")
+        self.log(f"   Removed {identity_cleaned} identity-related file(s)/directory(ies)")
 
-        # 5. 执行高级身份清理（新增）
-        self.log("5. 执行高级身份清理...")
+        # 5. Run advanced identity cleanup.
+        self.log("5. Running advanced identity cleanup...")
         self.perform_advanced_identity_cleanup(qoder_support_dir, preserve_chat)
 
-        # 6. 执行登录身份清理（新增 - 清理登录状态）
-        self.log("6. 执行登录身份清理...")
+        # 6. Clean login state.
+        self.log("6. Cleaning login state...")
         self.perform_login_identity_cleanup(qoder_support_dir)
 
-        # 7. 执行硬件指纹重置（新增 - 最强反检测）
-        self.log("7. 执行硬件指纹重置...")
+        # 7. Reset hardware fingerprint data.
+        self.log("7. Resetting hardware fingerprint data...")
         self.perform_hardware_fingerprint_reset(qoder_support_dir)
 
-        # 8. 执行超级深度清理（新增增强功能）
-        self.log("8. 执行超级深度清理...")
+        # 8. Run deep cleanup.
+        self.log("8. Running deep cleanup...")
         self.perform_super_deep_cleanup(qoder_support_dir)
 
-        # 9. 处理对话记录
+        # 9. Handle chat history.
         if preserve_chat:
-            self.log("9. 保留对话记录...")
-            self.log("   对话记录已保留")
+            self.log("9. Preserving chat history...")
+            self.log("   Chat history preserved")
         else:
-            self.log("9. 清除对话记录...")
+            self.log("9. Clearing chat history...")
             self.clear_chat_history(qoder_support_dir)
+
+        cleanup_failures = self._reset_cleanup_failures
+        self._reset_cleanup_failures = None
+        if cleanup_failures:
+            preview = "; ".join(cleanup_failures[:3])
+            remaining = len(cleanup_failures) - 3
+            if remaining > 0:
+                preview += f"; and {remaining} more cleanup failure(s)"
+            raise RuntimeError(
+                f"Reset is incomplete: {len(cleanup_failures)} cleanup operation(s) failed. {preview}"
+            )
 
     def perform_advanced_identity_cleanup(self, qoder_support_dir, preserve_chat=False):
         """执行高级身份清理，清除所有可能的身份识别信息"""
         try:
-            self.log("开始高级身份清理...")
+            self.log("Starting advanced identity cleanup...")
             cleaned_count = 0
 
             # 1. 清理 SharedClientCache 内部文件
@@ -2071,20 +2745,20 @@ class QoderResetGUI(QMainWindow):
                     if file_path.exists():
                         try:
                             file_path.unlink()
-                            self.log(f"   已清除: SharedClientCache/{file_name}")
+                            self.log(f"   Removed: SharedClientCache/{file_name}")
                             cleaned_count += 1
                         except Exception as e:
-                            self.log(f"   清除失败 {file_name}: {e}")
+                            self.log(f"   Failed to remove {file_name}: {e}")
 
                 # 总是清理 cache 目录（缓存数据）
                 cache_dir = shared_cache / "cache"
                 if cache_dir.exists():
                     try:
                         shutil.rmtree(cache_dir)
-                        self.log("   已清除: SharedClientCache/cache")
+                        self.log("   Removed: SharedClientCache/cache")
                         cleaned_count += 1
                     except Exception as e:
-                        self.log(f"   清除失败 cache: {e}")
+                        self.log(f"   Failed to remove SharedClientCache/cache: {e}")
 
                 # 根据保留对话设置决定是否清理 index 目录
                 index_dir = shared_cache / "index"
@@ -2093,10 +2767,10 @@ class QoderResetGUI(QMainWindow):
                         # 不保留对话：清理所有索引
                         try:
                             shutil.rmtree(index_dir)
-                            self.log("   已清除: SharedClientCache/index")
+                            self.log("   Removed: SharedClientCache/index")
                             cleaned_count += 1
                         except Exception as e:
-                            self.log(f"   清除失败 index: {e}")
+                            self.log(f"   Failed to remove SharedClientCache/index: {e}")
                     else:
                         # 保留对话：只清理非对话相关的索引
                         # 保留可能包含对话搜索索引的文件
@@ -2108,14 +2782,14 @@ class QoderResetGUI(QMainWindow):
                                 try:
                                     shutil.rmtree(index_item)
                                     self.log(
-                                        f"   已清除: SharedClientCache/index/{index_item.name}"
+                                        f"   Removed: SharedClientCache/index/{index_item.name}"
                                     )
                                     cleaned_count += 1
                                 except Exception as e:
                                     self.log(
-                                        f"   清除失败 index/{index_item.name}: {e}"
+                                        f"   Failed to remove SharedClientCache/index/{index_item.name}: {e}"
                                     )
-                        self.log("   保留对话模式：保留可能的对话索引")
+                        self.log("   Preserve-chat mode: retaining possible chat indexes")
 
             # 2. 清理系统级别的身份文件
             system_files = ["code.lock", "languagepacks.json"]
@@ -2125,20 +2799,20 @@ class QoderResetGUI(QMainWindow):
                 if file_path.exists():
                     try:
                         file_path.unlink()
-                        self.log(f"   已清除: {sys_file}")
+                        self.log(f"   Removed: {sys_file}")
                         cleaned_count += 1
                     except Exception as e:
-                        self.log(f"   清除失败 {sys_file}: {e}")
+                        self.log(f"   Failed to remove {sys_file}: {e}")
 
             # 3. 清理崩溃报告目录（可能包含设备信息）
             crashpad_dir = qoder_support_dir / "Crashpad"
             if crashpad_dir.exists():
                 try:
                     shutil.rmtree(crashpad_dir)
-                    self.log("   已清除: Crashpad")
+                    self.log("   Removed: Crashpad")
                     cleaned_count += 1
                 except Exception as e:
-                    self.log(f"   清除失败 Crashpad: {e}")
+                    self.log(f"   Failed to remove Crashpad: {e}")
 
             # 4. 清理缓存目录（CachedData和 CachedProfilesData）
             cached_dirs = ["CachedData", "CachedProfilesData"]
@@ -2147,10 +2821,10 @@ class QoderResetGUI(QMainWindow):
                 if dir_path.exists():
                     try:
                         shutil.rmtree(dir_path)
-                        self.log(f"   已清除: {cached_dir}")
+                        self.log(f"   Removed: {cached_dir}")
                         cleaned_count += 1
                     except Exception as e:
-                        self.log(f"   清除失败 {cached_dir}: {e}")
+                        self.log(f"   Failed to remove {cached_dir}: {e}")
 
             # 5. 清理 socket 文件
             import glob
@@ -2160,10 +2834,10 @@ class QoderResetGUI(QMainWindow):
             for socket_file in socket_files:
                 try:
                     Path(socket_file).unlink()
-                    self.log(f"   已清除: {Path(socket_file).name}")
+                    self.log(f"   Removed: {Path(socket_file).name}")
                     cleaned_count += 1
                 except Exception as e:
-                    self.log(f"   清除失败 {Path(socket_file).name}: {e}")
+                    self.log(f"   Failed to remove {Path(socket_file).name}: {e}")
 
             # 6. 清理设备指纹和活动记录文件（新增）
             fingerprint_and_activity_files = [
@@ -2194,20 +2868,20 @@ class QoderResetGUI(QMainWindow):
                             shutil.rmtree(file_path)
                         else:
                             file_path.unlink()
-                        self.log(f"   已清除: {file_name}")
+                        self.log(f"   Removed: {file_name}")
                         cleaned_count += 1
                     except Exception as e:
-                        self.log(f"   清除失败 {file_name}: {e}")
+                        self.log(f"   Failed to remove {file_name}: {e}")
 
             # 7. 清理数据库目录内的所有文件（新增）
             databases_dir = qoder_support_dir / "databases"
             if databases_dir.exists():
                 try:
                     shutil.rmtree(databases_dir)
-                    self.log("   已清除: databases 目录及其所有内容")
+                    self.log("   Removed: databases directory and all contents")
                     cleaned_count += 1
                 except Exception as e:
-                    self.log(f"   清除失败 databases: {e}")
+                    self.log(f"   Failed to remove databases: {e}")
 
             # 8. 清理 Electron 相关的持久化数据（新增）
             electron_files = [
@@ -2229,22 +2903,22 @@ class QoderResetGUI(QMainWindow):
                             shutil.rmtree(file_path)
                         else:
                             file_path.unlink()
-                        self.log(f"   已清除: {electron_file}")
+                        self.log(f"   Removed: {electron_file}")
                         cleaned_count += 1
                     except Exception as e:
-                        self.log(f"   清除失败 {electron_file}: {e}")
+                        self.log(f"   Failed to remove {electron_file}: {e}")
 
-            self.log(f"   高级身份清理完成，处理了 {cleaned_count} 个项目")
+            self.log(f"   Advanced identity cleanup finished; processed {cleaned_count} item(s)")
 
         except Exception as e:
-            self.log(f"   高级身份清理失败: {e}")
+            self.log(f"   Advanced identity cleanup failed: {e}")
 
     def clear_chat_history(self, qoder_support_dir):
         """清除对话记录"""
         try:
             cleared = 0
 
-            # 1. 清除工作区中的对话会话
+            # 1. Remove workspace chat sessions.
             workspace_storage = qoder_support_dir / "User/workspaceStorage"
             if workspace_storage.exists():
                 for workspace_dir in workspace_storage.iterdir():
@@ -2255,12 +2929,12 @@ class QoderResetGUI(QMainWindow):
                             try:
                                 shutil.rmtree(chat_sessions)
                                 self.log(
-                                    f"   已清除: {chat_sessions.relative_to(qoder_support_dir)}"
+                                    f"   Removed: {chat_sessions.relative_to(qoder_support_dir)}"
                                 )
                                 cleared += 1
                             except Exception as e:
                                 self.log(
-                                    f"   清除失败 {chat_sessions.relative_to(qoder_support_dir)}: {e}"
+                                    f"   Failed to remove {chat_sessions.relative_to(qoder_support_dir)}: {e}"
                                 )
 
                         # 清除chatEditingSessions目录
@@ -2269,35 +2943,35 @@ class QoderResetGUI(QMainWindow):
                             try:
                                 shutil.rmtree(chat_editing)
                                 self.log(
-                                    f"   已清除: {chat_editing.relative_to(qoder_support_dir)}"
+                                    f"   Removed: {chat_editing.relative_to(qoder_support_dir)}"
                                 )
                                 cleared += 1
                             except Exception as e:
                                 self.log(
-                                    f"   清除失败 {chat_editing.relative_to(qoder_support_dir)}: {e}"
+                                    f"   Failed to remove {chat_editing.relative_to(qoder_support_dir)}: {e}"
                                 )
 
-            # 2. 清除历史记录
+            # 2. Remove history.
             history_dir = qoder_support_dir / "User/History"
             if history_dir.exists():
                 try:
                     shutil.rmtree(history_dir)
-                    self.log(f"   已清除: User/History")
+                    self.log("   Removed: User/History")
                     cleared += 1
                 except Exception as e:
-                    self.log(f"   清除失败 User/History: {e}")
+                    self.log(f"   Failed to remove User/History: {e}")
 
-            # 3. 清除会话存储中的对话相关数据
+            # 3. Remove chat-related session storage.
             session_storage = qoder_support_dir / "Session Storage"
             if session_storage.exists():
                 try:
                     shutil.rmtree(session_storage)
-                    self.log(f"   已清除: Session Storage")
+                    self.log("   Removed: Session Storage")
                     cleared += 1
                 except Exception as e:
-                    self.log(f"   清除失败 Session Storage: {e}")
+                    self.log(f"   Failed to remove Session Storage: {e}")
 
-            # 4. 清除用户数据中的对话相关配置
+            # 4. Remove chat-related user settings.
             user_data_file = qoder_support_dir / "User/globalStorage/storage.json"
             if user_data_file.exists():
                 try:
@@ -2317,7 +2991,7 @@ class QoderResetGUI(QMainWindow):
                     if chat_keys:
                         for key in chat_keys:
                             del data[key]
-                            self.log(f"   已清除配置: {key}")
+                            self.log(f"   Removed setting: {key}")
 
                         with open(user_data_file, "w", encoding="utf-8") as f:
                             json.dump(data, f, indent=4, ensure_ascii=False)
@@ -2325,16 +2999,16 @@ class QoderResetGUI(QMainWindow):
                         cleared += 1
 
                 except Exception as e:
-                    self.log(f"   清除用户配置失败: {e}")
+                    self.log(f"   Failed to clean user settings: {e}")
 
-            self.log(f"   对话记录清除完成 (处理了 {cleared} 个项目)")
+            self.log(f"   Chat history cleanup finished; processed {cleared} item(s)")
 
         except Exception as e:
-            self.log(f"   清除对话记录失败: {e}")
+            self.log(f"   Chat history cleanup failed: {e}")
 
     def open_github(self):
         """打开GitHub链接"""
-        self.log("打开GitHub链接...")
+        self.log("Opening GitHub issues page...")
         webbrowser.open("https://github.com/VoDaiLocz/Qoder-Free/issues")
 
     def _write_fake_hardware_info(self, qoder_support_dir):
@@ -2456,11 +3130,11 @@ class QoderResetGUI(QMainWindow):
     def perform_super_deep_cleanup(self, qoder_support_dir):
         """🛡️ 执行超级深度清理（安全增强版，只清理与Qoder相关的文件）"""
         try:
-            self.log("🔥 开始安全的超级深度清理...")
+            self.log("Starting deep cleanup...")
             cleaned_count = 0
 
             # 1. 清理系统级别的身份文件
-            self.log("1. 清理系统级别身份文件...")
+            self.log("1. Cleaning system-level identity files...")
             system_identity_files = [
                 # 日志和临时文件
                 "logs",
@@ -2544,13 +3218,13 @@ class QoderResetGUI(QMainWindow):
                             shutil.rmtree(file_path)
                         else:
                             file_path.unlink()
-                        self.log(f"   ✅ 已清除: {file_name}")
+                        self.log(f"   Removed: {file_name}")
                         cleaned_count += 1
                     except Exception as e:
-                        self.log(f"   ⚠️  清除失败 {file_name}: {e}")
+                        self.log(f"   Failed to remove {file_name}: {e}")
 
             # 2. 谨慎清理指定扩展名的可疑文件（增加安全检查）
-            self.log("2. 谨慎清理可疑扩展名文件...")
+            self.log("2. Cleaning selected file extensions...")
             suspicious_extensions = [
                 ".tmp",
                 ".temp",
@@ -2627,18 +3301,18 @@ class QoderResetGUI(QMainWindow):
                         if is_in_qoder_dir and is_qoder_related and not is_protected:
                             try:
                                 file_path.unlink()
-                                self.log(f"   ✅ 已清除可疑文件: {file}")
+                                self.log(f"   Removed selected file: {file}")
                                 cleaned_count += 1
                             except Exception as e:
-                                self.log(f"   ⚠️  清除失败 {file}: {e}")
+                                self.log(f"   Failed to remove {file}: {e}")
                         else:
                             if not is_qoder_related:
-                                self.log(f"   ℹ️  跳过非相关文件: {file}")
+                                self.log(f"   Skipped unrelated file: {file}")
                             if is_safe_file:
-                                self.log(f"   ℹ️  保护重要文件: {file}")
+                                self.log(f"   Protected file: {file}")
 
             # 3. 清理隐藏文件和目录
-            self.log("3. 清理隐藏文件...")
+            self.log("3. Cleaning hidden files...")
             for root, dirs, files in os.walk(qoder_support_dir):
                 # 清理隐藏文件（以点开头）
                 for file in files:
@@ -2646,10 +3320,10 @@ class QoderResetGUI(QMainWindow):
                         file_path = Path(root) / file
                         try:
                             file_path.unlink()
-                            self.log(f"   ✅ 已清除隐藏文件: {file}")
+                            self.log(f"   Removed hidden file: {file}")
                             cleaned_count += 1
                         except Exception as e:
-                            self.log(f"   ⚠️  清除失败 {file}: {e}")
+                            self.log(f"   Failed to remove hidden file {file}: {e}")
 
                 # 清理隐藏目录（以点开头）
                 for dir_name in dirs[:]:
@@ -2657,14 +3331,14 @@ class QoderResetGUI(QMainWindow):
                         dir_path = Path(root) / dir_name
                         try:
                             shutil.rmtree(dir_path)
-                            self.log(f"   ✅ 已清除隐藏目录: {dir_name}")
+                            self.log(f"   Removed hidden directory: {dir_name}")
                             dirs.remove(dir_name)  # 从遍历中移除
                             cleaned_count += 1
                         except Exception as e:
-                            self.log(f"   ⚠️  清除失败 {dir_name}: {e}")
+                            self.log(f"   Failed to remove hidden directory {dir_name}: {e}")
 
             # 4. 重置文件权限（防止文件时间戳检测）
-            self.log("4. 重置文件权限...")
+            self.log("4. Resetting file permissions...")
             try:
                 # 重置整个目录的权限
                 if platform.system() != "Windows":
@@ -2673,17 +3347,17 @@ class QoderResetGUI(QMainWindow):
                         check=False,
                         timeout=30,
                     )
-                    self.log("   ✅ 文件权限已重置")
+                    self.log("   File permissions reset")
             except Exception as e:
-                self.log(f"   ⚠️  权限重置失败: {e}")
+                self.log(f"   Failed to reset file permissions: {e}")
 
             # 5. Do not create decoy files. Keeping cleanup output minimal makes
             # diagnostics easier and avoids adding new state that users did not ask for.
-            self.log("5. 跳过迷惑文件创建，保持清理结果可验证")
+            self.log("5. Skipping decoy-file creation")
 
             # 6. 安全清理系统级别的缓存（macOS）
             if platform.system() == "Darwin":
-                self.log("6. 安全清理 macOS 系统级缓存...")
+                self.log("6. Cleaning selected macOS user cache entries...")
                 try:
                     # 只清理用户级别的系统缓存，不影响系统稳定性
                     user_system_cache_paths = [
@@ -2711,21 +3385,21 @@ class QoderResetGUI(QMainWindow):
                                             shutil.rmtree(item)
                                         else:
                                             item.unlink()
-                                        self.log(f"   ✅ 已清理系统缓存: {item.name}")
+                                        self.log(f"   Removed system cache entry: {item.name}")
                                         cleaned_count += 1
                                     except Exception as e:
                                         self.log(
-                                            f"   ⚠️  系统缓存清理失败 {item.name}: {e}"
+                                            f"   Failed to clean system cache entry {item.name}: {e}"
                                         )
 
                     # 不清理 LaunchServices，避免影响系统功能
-                    self.log("   ℹ️  为保护系统稳定性，跳过 LaunchServices 清理")
+                    self.log("   Skipped LaunchServices cleanup to protect system stability")
 
                 except Exception as e:
-                    self.log(f"   ⚠️  macOS 系统缓存清理失败: {e}")
+                    self.log(f"   macOS user cache cleanup failed: {e}")
 
             elif platform.system() == "Windows":
-                self.log("6. 安全清理 Windows 系统级缓存...")
+                self.log("6. Cleaning selected Windows user cache entries...")
                 try:
                     # 只清理用户级别的缓存，不影响系统
                     user_cache_paths = [
@@ -2748,19 +3422,17 @@ class QoderResetGUI(QMainWindow):
                                             shutil.rmtree(item)
                                         else:
                                             item.unlink()
-                                        self.log(
-                                            f"   ✅ 已清理Windows缓存: {item.name}"
-                                        )
+                                        self.log(f"   Removed Windows cache entry: {item.name}")
                                         cleaned_count += 1
                                     except Exception as e:
-                                        self.log(f"   ⚠️  清理失败: {e}")
+                                        self.log(f"   Failed to remove cache entry: {e}")
                 except Exception as e:
-                    self.log(f"   ⚠️  Windows 系统缓存清理失败: {e}")
+                    self.log(f"   Windows user cache cleanup failed: {e}")
 
-            self.log(f"   超级深度清理完成，处理了 {cleaned_count} 个项目")
+            self.log(f"   Deep cleanup finished; processed {cleaned_count} item(s)")
 
         except Exception as e:
-            self.log(f"   超级深度清理失败: {e}")
+            self.log(f"   Deep cleanup failed: {e}")
 
     def perform_hardware_fingerprint_reset(self, qoder_support_dir):
         """Thực hiện reset dấu vân tay phần cứng"""

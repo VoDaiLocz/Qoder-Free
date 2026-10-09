@@ -1,79 +1,45 @@
 @echo off
-REM Qoder Reset Tool GUI Launcher for Windows
+setlocal
+cd /d "%~dp0"
 
-REM Set console to UTF-8 encoding
-chcp 65001 >nul
-
-REM Detect Python installation
 where python >nul 2>&1
-if %errorlevel% neq 0 (
-    echo ❌ Error: Python not found
-    echo Please install Python from:
-    echo 1. https://www.python.org/downloads/windows/
-    echo 2. Microsoft Store
-    echo 3. Anaconda Distribution
-    pause
-    exit /b 1
-)
+if errorlevel 1 goto no_python
 
-REM Check Python version (requires Python 3.7+)
-for /f "delims=" %%a in ('python -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')"') do set "PYVER=%%a"
-set "PYVER=%PYVER:.=%"
-if %PYVER% lss 37 (
-    echo ❌ Error: Python 3.7 or higher is required
-    echo Current version: %PYVER%
-    pause
-    exit /b 1
-)
+if not exist "%~dp0qoder_reset_gui.py" goto no_script
+if not exist "%~dp0requirements.txt" goto no_requirements
 
-REM Install or upgrade required packages
-echo ⚙️ Checking and installing required packages...
-python -m pip install --upgrade pip
-python -m pip install PyQt5 requests
+echo Installing required Python packages...
+python -m pip install -r "%~dp0requirements.txt"
+if errorlevel 1 goto install_failed
 
-REM Verify package installation
-python -c "import PyQt5; import requests" 2>nul
-if %errorlevel% neq 0 (
-    echo ❌ Error: Failed to install required packages
-    echo Please run: python -m pip install PyQt5 requests
-    pause
-    exit /b 1
-)
+echo Starting Qoder Reset Tool...
+where pythonw >nul 2>&1
+if errorlevel 1 goto launch_console
+start "" pythonw "%~dp0qoder_reset_gui.py"
+exit /b 0
 
-REM Check if GUI script exists
-if not exist "qoder_reset_gui.py" (
-    echo ❌ Error: qoder_reset_gui.py not found
-    echo Please ensure you are in the correct directory
-    pause
-    exit /b 1
-)
+:launch_console
+start "" python "%~dp0qoder_reset_gui.py"
+exit /b 0
 
-REM Clear screen and show startup info
-cls
-echo ==================================================
-echo 🚀 Qoder Reset Tool GUI Launcher
-echo ==================================================
-echo ✅ Environment checks passed
-echo ✅ Starting application...
-echo ==================================================
+:no_python
+echo ERROR: Python was not found.
+echo Install Python for Windows, then run this file again.
+pause
+exit /b 1
 
-REM Launch the GUI application
-REM Optional: enable console + Qt plugin diagnostics
-REM   set QODER_DEBUG=1
-REM   set QODER_QT_RESET_ENV=1
-if "%QODER_DEBUG%"=="1" (
-    set "QODER_CONSOLE=1"
-    set "QT_DEBUG_PLUGINS=1"
-)
+:no_script
+echo ERROR: qoder_reset_gui.py was not found next to this launcher.
+pause
+exit /b 1
 
-if "%QODER_CONSOLE%"=="1" (
-    start "" python qoder_reset_gui.py
-) else (
-    start "" pythonw qoder_reset_gui.py
-)
+:no_requirements
+echo ERROR: requirements.txt was not found next to this launcher.
+pause
+exit /b 1
 
-REM Post-execution
-echo ==================================================
-echo 🏁 Qoder Reset Tool GUI Launched
-echo ==================================================
-timeout /t 2 >nul
+:install_failed
+echo ERROR: Required packages could not be installed.
+echo Check your internet connection and Python pip installation, then retry.
+pause
+exit /b 1
