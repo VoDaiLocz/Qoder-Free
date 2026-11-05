@@ -3,6 +3,8 @@ import os
 import uuid
 from pathlib import Path
 
+import pytest
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt5.QtWidgets import QApplication
@@ -87,6 +89,23 @@ def test_full_reset_runs_login_and_deep_cleanup_without_crashing(tmp_path):
     assert "session.id" not in data
     assert not (qoder_dir / "Cookies").exists()
     assert (qoder_dir / "hardware_info.json").is_file()
+    assert app is not None
+
+
+def test_full_reset_reports_cleanup_failures(tmp_path):
+    qoder_dir = tmp_path / "Qoder"
+    qoder_dir.mkdir()
+
+    app = QApplication.instance() or QApplication([])
+    window = QoderResetGUI()
+    window.get_qoder_data_dir = lambda: qoder_dir
+    window.perform_advanced_identity_cleanup = lambda *_: window.log(
+        "Failed to remove SharedStorage: file is being used by another process"
+    )
+
+    with pytest.raises(RuntimeError, match="Reset is incomplete"):
+        window.perform_full_reset(preserve_chat=True)
+
     assert app is not None
 
 

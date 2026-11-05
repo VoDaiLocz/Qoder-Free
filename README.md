@@ -1,7 +1,7 @@
 # Qoder Reset Tool 🔒
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/VoDaiLocz/Qoder-Free/releases/tag/v1.2.0)
+[![Version](https://img.shields.io/badge/version-1.3.2-blue.svg)](https://github.com/VoDaiLocz/Qoder-Free/releases/tag/v1.3.2)
 [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 [![PyQt5](https://img.shields.io/badge/GUI-PyQt5-green.svg)](https://pypi.org/project/PyQt5/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/VoDaiLocz/Qoder-Free)
@@ -63,6 +63,7 @@ debugging.
 
 1. **Launch the Application**
    - Run the appropriate startup script for your platform
+   - On Windows, extract the source package and run `start_gui.bat`; it installs the dependencies from `requirements.txt`
    - Select your preferred language from the dropdown
 
 2. **One-Click Reset** (Recommended)
@@ -75,10 +76,15 @@ debugging.
    - **Reset Machine ID**: Generate new machine identifier
    - **Reset Telemetry**: Clear tracking data
    - **Deep Identity Clean**: Comprehensive privacy cleanup
+   - **Windows Device Details**: View the C: volume serial, network adapters, SafeStore files, Windows install time, and Qoder machine-info output in the app
+   - **Randomize InstallTime & Clear SafeStore**: Set InstallTime to a random valid FILETIME (from 2000 through the current UTC time) and delete SafeStore contents. Requires running Qoder-Free as Administrator.
+   - **Randomize All Adapter MACs**: Assign random locally administered addresses to eligible physical Windows network adapters. Requires Administrator privileges; network connectivity may briefly drop and some drivers may not support changing the address.
+   - **Change C: Volume Serial**: Use an already-installed Microsoft Sysinternals VolumeID utility to generate a new C: serial. Requires Administrator privileges; NTFS changes take effect after restarting Windows. Download [VolumeID](https://learn.microsoft.com/sysinternals/downloads/volumeid) and put `Volumeid.exe` or `VolumeID64.exe` beside Qoder-Free or on `PATH`.
 
 ### Safety Features
 
 - **Process Detection**: Automatically detects running Qoder instances
+- **Safe Reset Shutdown**: Waits for Qoder to exit and retries termination before cleaning locked files
 - **Backup Preservation**: Option to keep important user data
 - **Operation Logging**: Detailed logs of all operations
 - **Rollback Support**: Safe operations with verification

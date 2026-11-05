@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-10-09
+
+### Added
+- Add in-app Windows machine diagnostics for the C: volume, network adapters, SafeStore, Windows install time, and Qoder machine information.
+- Add Windows actions to randomize the InstallTime value, clear SafeStore contents, and randomize eligible physical network adapter MAC addresses.
+- Add an optional C: volume serial change using an already-installed Microsoft Sysinternals VolumeID utility.
+
+### Fixed
+- Wait for Qoder to exit and retry force termination before removing locked files during reset.
+- On Windows, detect and terminate the `Qoder IDE.exe` process before reset.
+
+## [1.3.1] - 2026-10-03
+
+### Fixed
+- Wait for Qoder to exit and retry force termination before removing locked files during reset.
+- On Windows, detect and terminate the `Qoder IDE.exe` process before reset.
+
 ## [1.3.0] - 2026-08-24
 
 ### Added

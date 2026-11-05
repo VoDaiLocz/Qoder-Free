@@ -83,27 +83,15 @@ jobs:
         body: |
           ## Qoder-Free ${{ github.ref_name }}
 
-          ### ✨ Features
-          - One-click reset functionality for Qoder application data
-          - Machine ID reset with UUID generation
-          - Telemetry data cleanup and privacy protection
-          - Deep identity cleanup with comprehensive file removal
-          - Hardware fingerprint reset for advanced anti-detection
-          - Multi-language support (English, Vietnamese, Chinese, Russian)
-          - Cross-platform compatibility (Windows, macOS, Linux)
-          - Modern PyQt5-based GUI with professional styling
-          - Version display in GUI status bar
+          ### Added
+          - In-app Windows machine diagnostics and Windows identity controls for InstallTime, SafeStore contents, physical adapter MAC addresses, and the C: volume serial.
 
-          ### 🔄 Changes in v1.3.0
-          - Added 1-line installation scripts (`scripts/install.sh` and `scripts/install.ps1`) for instant install/run
-          - Added Pure CLI / Headless mode (`--cli`, `--reset`, `--status`, `--backup`, `--restore`, `--check-update`)
-          - Added Identity Auto-Backup before reset & 1-click restore functionality with manifest
-          - Added in-app & CLI check for latest GitHub updates via GitHub API
-          - Added comprehensive automated test suite `test_features.py`
-          - Optimized startup and removed redundant method definitions
+          ### Fixed
+          - Wait for Qoder to exit and retry force termination before cleaning files that may be locked.
+          - On Windows, detect and force-terminate `Qoder IDE.exe` before reset.
 
           ### 📦 Downloads
-          - **Windows**: `qoder-reset-tool-windows.zip`
+          - **Windows 10/11**: `qoder-reset-tool-windows.zip`
           - **macOS**: `qoder-reset-tool-macos.tar.gz`
           - **Linux**: `qoder-reset-tool-linux.tar.gz`
 
